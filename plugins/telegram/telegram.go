@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"zee-mirror/internal/config"
@@ -23,6 +24,11 @@ type Engine struct {
 
 func NewEngine(cfg *config.Config) *Engine {
 	return &Engine{Config: cfg}
+}
+
+// CanHandle claims private/public Telegram message links.
+func (e *Engine) CanHandle(url string) bool {
+	return strings.Contains(url, "/c/") || strings.Contains(url, "t.me/c/") || strings.Contains(url, "t.me/")
 }
 
 func (e *Engine) Download(_ context.Context, task *domain.Task, outputDir string, onProgress func(downloader.ProgressUpdate)) error {

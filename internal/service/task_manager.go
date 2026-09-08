@@ -88,7 +88,6 @@ type TorrentSession = domain.TorrentSession
 type TorrentFile = domain.TorrentFile
 
 type TaskManager struct {
-	UserbotEngine        downloader.DownloadEngine
 	DB                   repository.TaskRepository
 	Aria2Engine          downloader.DownloadEngine
 	YTDLPEngine          downloader.MediaDownloader
@@ -148,7 +147,6 @@ func NewTaskManager(bot *tgbotapi.BotAPI, cfg *config.Config, processTaskFunc fu
 		RefreshDashboardFunc: refreshDashboardFunc,
 		Aria2Engine:          aria2Engine,
 		YTDLPEngine:          ytdlpEngine,
-		UserbotEngine:        downloader.NewUserbotEngine(cfg),
 		LastDashUpdateAt:     make(map[int64]time.Time),
 		LastDashProgressSum:  make(map[int64]float64),
 		LastTasksCount:       make(map[int64]int),

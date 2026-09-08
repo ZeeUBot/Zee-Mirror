@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"zee-mirror/internal/config"
 	"zee-mirror/internal/domain"
@@ -23,6 +24,11 @@ type Engine struct {
 
 func NewEngine(cfg *config.Config) *Engine {
 	return &Engine{Config: cfg}
+}
+
+// CanHandle claims Mega links.
+func (e *Engine) CanHandle(url string) bool {
+	return strings.Contains(url, "mega.nz")
 }
 
 func (e *Engine) Download(ctx context.Context, task *domain.Task, outputDir string, onProgress func(downloader.ProgressUpdate)) error {

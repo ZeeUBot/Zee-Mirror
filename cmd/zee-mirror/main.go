@@ -35,6 +35,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "modernc.org/sqlite"
 
+	_ "zee-mirror/plugins/drive"
 	_ "zee-mirror/plugins/mega"
 	_ "zee-mirror/plugins/telegram"
 	"zee-mirror/plugins/torrent"

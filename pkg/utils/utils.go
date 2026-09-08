@@ -460,7 +460,7 @@ func ParseBytesString(s string) int64 {
 		if strings.HasSuffix(lowerS, suffix) {
 			mult = suffixes[suffix]
 			lowerS = strings.TrimSuffix(lowerS, suffix)
-			s = lowerS
+			s = strings.TrimSpace(lowerS)
 			break
 		}
 	}

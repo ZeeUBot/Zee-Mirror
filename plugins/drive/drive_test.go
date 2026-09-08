@@ -1,4 +1,4 @@
-package service
+package drive
 
 import (
 	"testing"
@@ -60,13 +60,54 @@ func TestExtractDriveID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.urlStr, func(t *testing.T) {
-			gotID, gotIsFolder := extractDriveID(tt.urlStr)
+			gotID, gotIsFolder := ExtractDriveID(tt.urlStr)
 			if gotID != tt.wantID {
-				t.Errorf("extractDriveID() gotID = %v, want %v", gotID, tt.wantID)
+				t.Errorf("ExtractDriveID() gotID = %v, want %v", gotID, tt.wantID)
 			}
 			if gotIsFolder != tt.wantIsFolder {
-				t.Errorf("extractDriveID() gotIsFolder = %v, want %v", gotIsFolder, tt.wantIsFolder)
+				t.Errorf("ExtractDriveID() gotIsFolder = %v, want %v", gotIsFolder, tt.wantIsFolder)
 			}
 		})
+	}
+}
+
+func TestCanHandle(t *testing.T) {
+	e := NewEngine(nil)
+	cases := []struct {
+		url  string
+		want bool
+	}{
+		{"https://drive.google.com/file/d/1xyzABC/view", true},
+		{"https://drive.google.com/drive/folders/1abcDEfg", true},
+		{"https://docs.google.com/uc?id=1xyzABC", true},
+		{"https://drive.google.com/drive/home", false},
+		{"https://mega.nz/file/abc", false},
+		{"https://example.com/file.zip", false},
+	}
+	for _, c := range cases {
+		if got := e.CanHandle(c.url); got != c.want {
+			t.Errorf("CanHandle(%q) = %v, want %v", c.url, got, c.want)
+		}
+	}
+}
+
+func TestParseRcloneLine(t *testing.T) {
+	p := ParseRcloneLine("Transferred: 12.5 MiB / 100 MiB, 12%, 1.2 MiB/s, ETA 75s")
+	if !p.HasSize || p.Total == 0 {
+		t.Error("expected size fields parsed")
+	}
+	if !p.HasProgress || p.Progress != 12 {
+		t.Errorf("expected progress 12, got %v", p.Progress)
+	}
+	if !p.HasSpeed || p.Speed == 0 {
+		t.Error("expected speed parsed")
+	}
+	if !p.HasETA {
+		t.Error("expected ETA parsed")
+	}
+
+	empty := ParseRcloneLine("Checking...")
+	if empty.HasSize || empty.HasProgress || empty.HasSpeed || empty.HasETA {
+		t.Error("non-matching line must set no flags")
 	}
 }

@@ -82,26 +82,12 @@ func (s *BotService) processTask(task *Task) {
 		url = fileURL
 	}
 
-	if (task.Type == TypeMirror || task.Type == TypeLeech) && (strings.Contains(url, "/c/") || strings.Contains(url, "t.me/c/") || strings.Contains(url, "t.me/")) {
-		if engine, err := registry.CreateDownloadEngine("telegram", s.Config); err == nil {
-			slog.Info("Using Telegram plugin for link", "taskID", task.ID)
+	if task.Type == TypeMirror || task.Type == TypeLeech {
+		if engine, name, ok := registry.SuggestDownloadEngine(url, s.Config); ok {
+			slog.Info("Using plugin for link", "taskID", task.ID, "engine", name)
 			s.executeDownloadEngine(engine, task)
 			return
 		}
-	}
-
-	if (task.Type == TypeMirror || task.Type == TypeLeech) && strings.Contains(url, "mega.nz") {
-		if engine, err := registry.CreateDownloadEngine("mega", s.Config); err == nil {
-			slog.Info("Using Mega plugin for link", "taskID", task.ID)
-			s.executeDownloadEngine(engine, task)
-			return
-		}
-	}
-
-	if (task.Type == TypeMirror || task.Type == TypeLeech) && (strings.Contains(url, "drive.google.com") || strings.Contains(url, "docs.google.com") || strings.Contains(url, "drive.usercontent.google.com")) {
-		slog.Info("Detected Google Drive URL for Mirror/Leech, switching to local Rclone download", "taskID", task.ID)
-		s.downloadGDriveWithRclone(task)
-		return
 	}
 
 	switch task.Type {

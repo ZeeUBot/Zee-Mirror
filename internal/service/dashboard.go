@@ -343,14 +343,13 @@ func (s *BotService) HandleCancel(message *tgbotapi.Message, args string) {
 
 	if foundBatch {
 		lang := s.GetUserLanguage(message.From.ID)
-		targetBatch.CancelFunc()
-		targetBatch.SetStatus(StatusCancelled)
+		targetBatch.Cancel()
 		s.reply(message, GetSuccessMessage("BATCH CANCELLED", fmt.Sprintf(i18n.T(lang, "batch_cancelled"), taskID)))
 		s.UpdateSharedDashboard(message.Chat.ID, false)
 		return
 	}
 
-	if s.checkBatchSubTaskCancellation(taskID) {
+	if s.BatchManager.CancelSubTask(taskID) {
 		lang := s.GetUserLanguage(message.From.ID)
 		s.reply(message, GetSuccessMessage("SUB-TASK CANCELLED", fmt.Sprintf(i18n.T(lang, "sub_task_cancelled"), taskID)))
 		s.UpdateSharedDashboard(message.Chat.ID, false)
@@ -380,18 +379,12 @@ func (s *BotService) HandleCancelAll(message *tgbotapi.Message) {
 	s.BatchManager.Mu.RUnlock()
 
 	for _, id := range batchIDs {
-		s.BatchManager.Mu.Lock()
-		if b, exists := s.BatchManager.Batches[id]; exists {
-			if b.Status != StatusCompleted && b.Status != StatusFailed && b.Status != StatusCancelled {
-				if b.CancelFunc != nil {
-					b.CancelFunc()
-				}
-				b.Status = StatusCancelled
-				b.CompletedAt = time.Now()
-				count++
-			}
+		s.BatchManager.Mu.RLock()
+		b, exists := s.BatchManager.Batches[id]
+		s.BatchManager.Mu.RUnlock()
+		if exists && b.Cancel() {
+			count++
 		}
-		s.BatchManager.Mu.Unlock()
 	}
 
 	lang := s.GetUserLanguage(message.From.ID)

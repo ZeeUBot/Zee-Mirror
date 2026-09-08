@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -111,6 +112,38 @@ func TestTask_Read(t *testing.T) {
 
 	assert.Equal(t, service.StatusDownloading, status)
 	assert.Equal(t, "http://example.com/file.zip", url)
+}
+
+func TestTask_SetError_CancelWins(t *testing.T) {
+	task := &service.Task{Task: domain.Task{ID: "t1", Type: service.TypeMirror, Status: service.StatusDownloading}}
+	task.SetStatus(service.StatusCancelled)
+	task.SetError("boom")
+	assert.Equal(t, service.StatusCancelled, task.Status)
+}
+
+func TestBatchTask_Cancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	b := &service.BatchTask{ID: "b1", Status: service.StatusDownloading, Ctx: ctx, CancelFunc: cancel}
+
+	assert.True(t, b.Cancel())
+	assert.Equal(t, service.StatusCancelled, b.Status)
+	assert.False(t, b.Cancel())
+	select {
+	case <-ctx.Done():
+	default:
+		t.Error("batch context should be cancelled")
+	}
+
+	b.SetStatus(service.StatusCompleted)
+	assert.Equal(t, service.StatusCancelled, b.Status)
+}
+
+func TestBatchTask_SetError(t *testing.T) {
+	b := &service.BatchTask{ID: "b2", Status: service.StatusDownloading}
+	b.SetError("zip failed")
+	assert.Equal(t, service.StatusFailed, b.Status)
+	assert.Equal(t, "zip failed", b.Error)
+	assert.False(t, b.CompletedAt.IsZero())
 }
 
 func TestTask_Read_ConcurrentSafety(t *testing.T) {

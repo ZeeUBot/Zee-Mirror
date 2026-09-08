@@ -596,18 +596,6 @@ func DownloadFile(url, dst string) error {
 	return err
 }
 
-func IsAdmin(userID int64, ownerID int64, authorizedUsers []int64) bool {
-	if userID == ownerID {
-		return true
-	}
-	for _, id := range authorizedUsers {
-		if id == userID {
-			return true
-		}
-	}
-	return false
-}
-
 func BoolToEmoji(b bool) string {
 	if b {
 		return "✅"

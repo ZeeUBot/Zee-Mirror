@@ -108,7 +108,7 @@ func NewBotService(bot *tgbotapi.BotAPI, cfg *config.Config, db repository.FullR
 		s.UpdateSharedDashboard(chatID, forceNew)
 	}
 
-	tm := NewTaskManager(bot, cfg, processFunc, refreshFunc, db, sqlDB)
+	tm := NewTaskManager(bot, cfg, processFunc, refreshFunc, db, sqlDB, authService)
 	tm.StopDuplicate = cfg.StopDuplicate
 	s.TaskManager = tm
 
@@ -322,7 +322,7 @@ func (s *BotService) SyncUser(user *tgbotapi.User) {
 	existing, err := s.DB.GetByID(ctx, user.ID)
 
 	role := "user"
-	if utils.IsAdmin(user.ID, s.Config.OwnerID, s.Config.AuthorizedUsers) {
+	if s.Auth.IsPrivileged(user.ID) {
 		if user.ID == s.Config.OwnerID {
 			role = "owner"
 		} else {

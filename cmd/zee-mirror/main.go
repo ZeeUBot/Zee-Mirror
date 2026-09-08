@@ -122,7 +122,7 @@ func main() {
 
 	go func() {
 		time.Sleep(2 * time.Second)
-		recovery := service.NewTaskRecovery(db, botSvc.TaskManager, botSvc)
+		recovery := service.NewTaskRecovery(db, botSvc.TaskManager)
 		if err := recovery.RecoverIncompleteTasks(); err != nil {
 			slog.Warn("Failed to auto-recover tasks", "error", err)
 		}

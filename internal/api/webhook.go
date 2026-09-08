@@ -50,6 +50,11 @@ func (s *Server) handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) processWebhookUpdate(update tgbotapi.Update) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("PANIC in webhook handler", "recover", r)
+		}
+	}()
 	if s.Router == nil {
 		slog.Error("Router not set on API server, cannot process webhook update")
 		return

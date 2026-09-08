@@ -13,6 +13,7 @@ import (
 	"zee-mirror/internal/domain"
 	"zee-mirror/internal/downloader"
 	"zee-mirror/internal/organizer"
+	"zee-mirror/internal/queue"
 	"zee-mirror/plugins/registry"
 )
 
@@ -304,7 +305,7 @@ func (s *BotService) retryTask(task *Task, originalErr string) bool {
 		})
 
 		s.updateTaskStatus(task)
-		s.TaskManager.Queue.Enqueue(task, 0)
+		s.TaskManager.Queue.Enqueue(task, queue.PriorityLow)
 		select {
 		case s.TaskManager.QueueSignal <- struct{}{}:
 		default:

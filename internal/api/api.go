@@ -64,6 +64,18 @@ func jwtKey(secret string) []byte {
 	return h[:]
 }
 
+// validDashboardToken accepts the raw dashboard token or a JWT signed with it,
+// so REST and websocket share one auth seam.
+func (s *Server) validDashboardToken(tokenStr string) bool {
+	if subtle.ConstantTimeCompare([]byte(tokenStr), []byte(s.Service.Config.DashboardToken)) == 1 {
+		return true
+	}
+	token, err := jwt.Parse(tokenStr, func(_ *jwt.Token) (interface{}, error) {
+		return jwtKey(s.Service.Config.DashboardToken), nil
+	})
+	return err == nil && token.Valid
+}
+
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
@@ -115,11 +127,11 @@ func (s *Server) Start() {
 				}
 			}
 
-			apiKey := r.Header.Get("X-API-Key")
-			if subtle.ConstantTimeCompare([]byte(apiKey), []byte(s.Service.Config.DashboardToken)) == 1 {
-				next(w, r)
-				return
-			}
+		apiKey := r.Header.Get("X-API-Key")
+		if s.validDashboardToken(apiKey) {
+			next(w, r)
+			return
+		}
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)

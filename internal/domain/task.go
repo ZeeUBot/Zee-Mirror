@@ -19,6 +19,7 @@ const (
 	StatusCompleted   TaskStatus = "completed"
 	StatusFailed      TaskStatus = "failed"
 	StatusCancelled   TaskStatus = "cancelled"
+	StatusExpired     TaskStatus = "expired"
 )
 
 type TaskType string

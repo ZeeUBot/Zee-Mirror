@@ -3,12 +3,24 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"zee-mirror/internal/config"
 	"zee-mirror/internal/errors"
 	"zee-mirror/internal/repository"
 	"zee-mirror/pkg/utils"
 )
+
+// Authorizer is the single seam for access policy: bot commands, queue
+// priority, and dedup bypass all go through this interface.
+type Authorizer interface {
+	IsAuthorized(userID int64) bool
+	IsAdmin(userID int64) bool
+	IsOwner(userID int64) bool
+	// IsPrivileged preserves the legacy env-based privilege (owner or
+	// AUTHORIZED_USERS) used for queue priority and duplicate bypass.
+	IsPrivileged(userID int64) bool
+}
 
 const (
 	RoleAdmin      = "admin"
@@ -50,6 +62,17 @@ func (s *AuthService) IsAuthorized(userID int64) bool {
 
 func (s *AuthService) IsOwner(userID int64) bool {
 	return userID == s.Config.OwnerID
+}
+
+func (s *AuthService) IsPrivileged(userID int64) bool {
+	return isEnvPrivileged(s.Config, userID)
+}
+
+func isEnvPrivileged(cfg *config.Config, userID int64) bool {
+	if cfg == nil {
+		return false
+	}
+	return userID == cfg.OwnerID || slices.Contains(cfg.AuthorizedUsers, userID)
 }
 
 func (s *AuthService) IsAdmin(userID int64) bool {

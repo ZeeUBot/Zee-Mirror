@@ -645,8 +645,7 @@ func (s *BotService) HandleBatchCallback(callback *tgbotapi.CallbackQuery, parts
 		s.updateBatchStatus(batch)
 
 	case "cancel":
-		batch.CancelFunc()
-		batch.SetStatus(StatusCancelled)
+		batch.Cancel()
 		_, _ = s.Bot.Request(tgbotapi.NewCallback(callback.ID, "🚫 Batch cancelled"))
 		s.updateBatchStatus(batch)
 
@@ -661,25 +660,45 @@ func (s *BotService) HandleBatchCallback(callback *tgbotapi.CallbackQuery, parts
 func (b *BatchTask) SetStatus(status TaskStatus) {
 	b.Mu.Lock()
 	defer b.Mu.Unlock()
+	// Cancel wins, mirroring the Task seam.
+	if b.Status == StatusCancelled && status != StatusCancelled {
+		return
+	}
 	b.Status = status
-	if status == StatusCompleted || status == StatusFailed || status == StatusCancelled {
+	if isTerminalStatus(status) {
 		b.CompletedAt = time.Now()
 	}
 }
 
 func (b *BatchTask) SetError(err string) {
 	b.Mu.Lock()
-	defer b.Mu.Unlock()
 	b.Error = err
-	b.Status = StatusFailed
-	b.CompletedAt = time.Now()
+	b.Mu.Unlock()
+	b.SetStatus(StatusFailed)
 }
 
-func (s *BotService) checkBatchSubTaskCancellation(taskID string) bool {
-	s.BatchManager.Mu.RLock()
-	defer s.BatchManager.Mu.RUnlock()
+// Cancel terminates the batch and its sub-tasks via context propagation,
+// then records the terminal state. Idempotent: late completions cannot
+// overwrite the cancellation.
+func (b *BatchTask) Cancel() bool {
+	if b.CancelFunc != nil {
+		b.CancelFunc()
+	}
+	b.Mu.Lock()
+	defer b.Mu.Unlock()
+	if isTerminalStatus(b.Status) {
+		return false
+	}
+	b.Status = StatusCancelled
+	b.CompletedAt = time.Now()
+	return true
+}
 
-	for _, batch := range s.BatchManager.Batches {
+func (m *BatchManager) CancelSubTask(taskID string) bool {
+	m.Mu.RLock()
+	defer m.Mu.RUnlock()
+
+	for _, batch := range m.Batches {
 		batch.Mu.RLock()
 		for _, sub := range batch.SubTasks {
 			if sub.ID == taskID {

@@ -20,7 +20,6 @@ import (
 	"zee-mirror/internal/recovery"
 	"zee-mirror/internal/repository"
 	"zee-mirror/internal/uploader"
-	"zee-mirror/pkg/utils"
 	"zee-mirror/plugins/registry"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -107,6 +106,7 @@ type TaskManager struct {
 	LastDashProgressSum  map[int64]float64
 	Bot                  *tgbotapi.BotAPI
 	Config               *config.Config
+	Auth                 Authorizer
 	ProcessTaskFunc      func(*Task)
 	RefreshDashboardFunc func(int64, bool)
 	CheckpointManager    *recovery.CheckpointManager
@@ -123,7 +123,7 @@ type TaskManager struct {
 	StopDuplicate        bool
 }
 
-func NewTaskManager(bot *tgbotapi.BotAPI, cfg *config.Config, processTaskFunc func(*Task), refreshDashboardFunc func(int64, bool), db repository.TaskRepository, sqlDB *sql.DB) *TaskManager {
+func NewTaskManager(bot *tgbotapi.BotAPI, cfg *config.Config, processTaskFunc func(*Task), refreshDashboardFunc func(int64, bool), db repository.TaskRepository, sqlDB *sql.DB, auth Authorizer) *TaskManager {
 	aria2Engine, _ := registry.CreateDownloadEngine("aria2", cfg)
 	ytdlpEngine, _ := registry.CreateMediaDownloader("ytdlp", cfg)
 
@@ -153,6 +153,7 @@ func NewTaskManager(bot *tgbotapi.BotAPI, cfg *config.Config, processTaskFunc fu
 		LastDashProgressSum:  make(map[int64]float64),
 		LastTasksCount:       make(map[int64]int),
 		Config:               cfg,
+		Auth:                 auth,
 	}
 
 	if dbInstance, ok := db.(*database.DB); ok {
@@ -286,16 +287,21 @@ func (tm *TaskManager) cleanupTerminalTasks() {
 
 	tm.Mu.Lock()
 	var toRemove []string
+	activeChats := make(map[int64]struct{})
 	for id, task := range tm.Tasks {
 		var isTerminal bool
 		var completedAt time.Time
+		var chatID int64
 		task.Read(func() {
-			isTerminal = task.Status == StatusCompleted || task.Status == StatusFailed || task.Status == StatusCancelled
+			isTerminal = isTerminalStatus(task.Status)
 			completedAt = task.CompletedAt
+			chatID = task.ChatID
 		})
 		if isTerminal && !completedAt.IsZero() && completedAt.Before(cutoff) {
 			toRemove = append(toRemove, id)
+			continue
 		}
+		activeChats[chatID] = struct{}{}
 	}
 
 	for _, id := range toRemove {
@@ -304,8 +310,8 @@ func (tm *TaskManager) cleanupTerminalTasks() {
 	tm.Mu.Unlock()
 
 	tm.StatusMu.Lock()
-	for chatID, msgID := range tm.LastStatusMsg {
-		if _, exists := tm.Tasks[fmt.Sprintf("%d", msgID)]; !exists {
+	for chatID := range tm.LastStatusMsg {
+		if _, ok := activeChats[chatID]; !ok {
 			delete(tm.LastStatusMsg, chatID)
 			delete(tm.StatusPages, chatID)
 			delete(tm.LastDashUpdateAt, chatID)
@@ -347,6 +353,21 @@ func (tm *TaskManager) startRateLimitPersist() {
 	}
 }
 
+// isPrivileged routes queue privilege through the Authorizer seam; bare
+// managers in tests fall back to the env-based check with identical semantics.
+func (tm *TaskManager) isPrivileged(userID int64) bool {
+	if tm.Auth != nil {
+		return tm.Auth.IsPrivileged(userID)
+	}
+	return isEnvPrivileged(tm.Config, userID)
+}
+
+// isTerminalStatus is the single seam for terminal-state checks shared by
+// Task, BatchTask, and cleanup paths.
+func isTerminalStatus(s TaskStatus) bool {
+	return s == StatusCompleted || s == StatusFailed || s == StatusCancelled
+}
+
 func (tm *TaskManager) validateTaskConstraints(url, quality string, userID int64) error {
 	if tm.StopDuplicate {
 		tm.Mu.RLock()
@@ -365,7 +386,7 @@ func (tm *TaskManager) validateTaskConstraints(url, quality string, userID int64
 		}
 		tm.Mu.RUnlock()
 
-		if tm.DB != nil && !utils.IsAdmin(userID, tm.Config.OwnerID, tm.Config.AuthorizedUsers) {
+		if tm.DB != nil && !tm.isPrivileged(userID) {
 			oldTask, errDB := tm.DB.GetCompletedTaskByURL(context.Background(), url, quality)
 			if errDB == nil && oldTask != nil {
 				return fmt.Errorf("%w: file already exists in cloud/database", domain.ErrDuplicateTask)
@@ -421,7 +442,7 @@ func (tm *TaskManager) CreateTask(taskType TaskType, url, fileName string, chatI
 	_ = task.SaveToDB()
 
 	priority := queue.PriorityNormal
-	if utils.IsAdmin(userID, tm.Config.OwnerID, tm.Config.AuthorizedUsers) {
+	if tm.isPrivileged(userID) {
 		priority = queue.PriorityHigh
 	}
 
@@ -816,6 +837,11 @@ func (t *Task) SetStatus(status TaskStatus) {
 
 func (t *Task) SetError(err string) {
 	t.Update(func() {
+		// Cancel wins: a task cancelled mid-flight must not flip to failed
+		// when its context tears down, mirroring the SetStatus guard.
+		if t.Status == StatusCancelled {
+			return
+		}
 		t.Error = err
 		t.Status = StatusFailed
 		t.CompletedAt = time.Now().UTC()

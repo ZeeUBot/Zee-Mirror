@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"zee-mirror/internal/domain"
+	"zee-mirror/internal/queue"
 	"zee-mirror/internal/repository"
 	"zee-mirror/pkg/utils"
 
@@ -17,14 +18,12 @@ import (
 type TaskRecovery struct {
 	DB          repository.TaskRepository
 	TaskManager *TaskManager
-	BotService  *BotService
 }
 
-func NewTaskRecovery(db repository.TaskRepository, tm *TaskManager, bs *BotService) *TaskRecovery {
+func NewTaskRecovery(db repository.TaskRepository, tm *TaskManager) *TaskRecovery {
 	return &TaskRecovery{
 		DB:          db,
 		TaskManager: tm,
-		BotService:  bs,
 	}
 }
 
@@ -50,16 +49,7 @@ func (tr *TaskRecovery) RecoverIncompleteTasks() error {
 	for _, record := range tasks {
 		if time.Since(record.CreatedAt) > 24*time.Hour {
 			slog.Info("Skipping old task", "taskID", record.ID)
-			_ = tr.DB.UpdateStatus(ctx, record.ID, "expired", "Task expired")
-			skipped++
-			continue
-		}
-
-		tr.TaskManager.Mu.RLock()
-		_, alreadyExists := tr.TaskManager.Tasks[record.ID]
-		tr.TaskManager.Mu.RUnlock()
-		if alreadyExists {
-			slog.Info("Skipping already loaded task", "taskID", record.ID)
+			_ = tr.DB.UpdateStatus(ctx, record.ID, string(domain.StatusExpired), "Task expired")
 			skipped++
 			continue
 		}
@@ -73,16 +63,20 @@ func (tr *TaskRecovery) RecoverIncompleteTasks() error {
 		slog.Info("Recovering task", "taskID", record.ID)
 
 		tr.TaskManager.Mu.Lock()
+		if _, alreadyExists := tr.TaskManager.Tasks[task.ID]; alreadyExists {
+			tr.TaskManager.Mu.Unlock()
+			slog.Info("Skipping already loaded task", "taskID", record.ID)
+			skipped++
+			continue
+		}
 		tr.TaskManager.Tasks[task.ID] = task
 		tr.TaskManager.Mu.Unlock()
 
-		go func(t *Task) {
-			tr.TaskManager.Queue.Enqueue(t, 0)
-			select {
-			case tr.TaskManager.QueueSignal <- struct{}{}:
-			default:
-			}
-		}(task)
+		tr.TaskManager.Queue.Enqueue(task, queue.PriorityLow)
+		select {
+		case tr.TaskManager.QueueSignal <- struct{}{}:
+		default:
+		}
 
 		recovered++
 	}
@@ -166,7 +160,7 @@ func (s *BotService) HandleRecover(message *tgbotapi.Message) {
 	statusMsg.ParseMode = MarkdownV2
 	sent, _ := s.Bot.Send(statusMsg)
 
-	recovery := NewTaskRecovery(s.DB, s.TaskManager, s)
+	recovery := NewTaskRecovery(s.DB, s.TaskManager)
 	if err := recovery.RecoverIncompleteTasks(); err != nil {
 		s.EditMessage(sent.Chat.ID, sent.MessageID, fmt.Sprintf("❌ *Recovery failed*\n\n%s", utils.EscapeMarkdownV2(err.Error())))
 		return

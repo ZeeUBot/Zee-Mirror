@@ -633,19 +633,6 @@ func TestFormatStatusEmojiBoolToEmoji(t *testing.T) {
 	}
 }
 
-func TestIsAdmin(t *testing.T) {
-	authorized := []int64{111, 222}
-	if !IsAdmin(1, 1, nil) {
-		t.Error("owner should be admin")
-	}
-	if !IsAdmin(222, 1, authorized) {
-		t.Error("authorized user should be admin")
-	}
-	if IsAdmin(999, 1, authorized) {
-		t.Error("random user should not be admin")
-	}
-}
-
 func TestParseIntAndGetLastLines(t *testing.T) {
 	if ParseInt("42") != 42 || ParseInt("nope") != 0 {
 		t.Error("ParseInt wrong")

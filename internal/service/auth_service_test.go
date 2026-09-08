@@ -63,6 +63,16 @@ func TestIsAuthorized(t *testing.T) {
 	})
 }
 
+func TestIsPrivileged(t *testing.T) {
+	mockRepo := new(mocks.MockRepository)
+	svc := service.NewAuthService(&config.Config{OwnerID: 1, AuthorizedUsers: []int64{111, 222}}, mockRepo, mockRepo)
+
+	assert.True(t, svc.IsPrivileged(1))
+	assert.True(t, svc.IsPrivileged(222))
+	assert.False(t, svc.IsPrivileged(999))
+	assert.False(t, service.NewAuthService(nil, mockRepo, mockRepo).IsPrivileged(1))
+}
+
 func TestCheckQuota(t *testing.T) {
 	cfg := &config.Config{OwnerID: 12345}
 

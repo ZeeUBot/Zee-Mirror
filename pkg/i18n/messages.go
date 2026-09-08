@@ -294,10 +294,3 @@ func T(lang, key string, args ...any) string {
 	}
 	return msg
 }
-
-const (
-	MsgErrorHeader   = "❌ *Error*"
-	MsgAccessDenied  = "🚫 *Akses Ditolak*\n\nAnda tidak memiliki izin untuk menggunakan fitur ini\\."
-	MsgReplyRequired = "❌ *Error*\n\nReply ke file atau berikan URL\\."
-	MsgInvalidURL    = "❌ *URL Tidak Valid*\n\nBerikan URL yang benar\\."
-)

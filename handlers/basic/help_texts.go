@@ -20,10 +20,6 @@ func SetRegisteredCommands(commands []HelpCommandEntry) {
 	registeredCommands = commands
 }
 
-func GetRegisteredCommands() []HelpCommandEntry {
-	return registeredCommands
-}
-
 func GetHelpMirror() string {
 	return service.HelpDetailMessage(
 		"📥 MIRROR",

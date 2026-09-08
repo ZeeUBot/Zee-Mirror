@@ -464,7 +464,7 @@ func (r *RcloneUploader) generateIDBasedIndexURL(ctx context.Context, task *doma
 					}
 
 					if len(foundNames) > 0 {
-						slog.Info("Files found in parent during fallback", "iteration", i, "count", len(files), "sample", strings.Join(foundNames[:utils.Min(len(foundNames), 5)], ", "))
+						slog.Info("Files found in parent during fallback", "iteration", i, "count", len(files), "sample", strings.Join(foundNames[:min(len(foundNames), 5)], ", "))
 					}
 				}
 				if fileID != "" {

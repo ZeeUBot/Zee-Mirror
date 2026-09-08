@@ -23,7 +23,6 @@ import (
 	"zee-mirror/handlers/search"
 	"zee-mirror/handlers/storage"
 	"zee-mirror/internal/api"
-	"zee-mirror/internal/cache"
 	"zee-mirror/internal/config"
 	"zee-mirror/internal/database"
 	"zee-mirror/internal/metrics"
@@ -36,7 +35,6 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "modernc.org/sqlite"
 
-	_ "zee-mirror/plugins/drive"
 	_ "zee-mirror/plugins/mega"
 	_ "zee-mirror/plugins/telegram"
 	"zee-mirror/plugins/torrent"
@@ -88,10 +86,7 @@ func main() {
 	}
 	defer aria2Daemon.Stop()
 
-	redisClient := cache.NewRedisClient(cfg.RedisURL)
-	defer redisClient.Close()
-
-	botSvc := service.NewBotService(primaryBot, cfg, db, db.DB, redisClient)
+	botSvc := service.NewBotService(primaryBot, cfg, db, db.DB)
 	go search.StartSearchSessionCleanup(botSvc.TaskManager.ShutdownChan)
 
 	sighup := make(chan os.Signal, 1)

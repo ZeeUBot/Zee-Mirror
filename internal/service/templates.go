@@ -209,7 +209,3 @@ func GetHelpMainText(lang string) string {
 func GetHelpKeyboard(_ string) tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.InlineKeyboardMarkup{}
 }
-
-func GetSettingsKeyboard(_ string) tgbotapi.InlineKeyboardMarkup {
-	return tgbotapi.InlineKeyboardMarkup{}
-}

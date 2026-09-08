@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"sync"
 	"time"
-	"zee-mirror/internal/cache"
 	"zee-mirror/internal/config"
 	"zee-mirror/internal/domain"
 	"zee-mirror/internal/repository"
@@ -34,7 +33,6 @@ type BotService struct {
 	Notifications  *NotificationService
 	RcloneUploader *uploader.RcloneUploader
 	SQLDB          *sql.DB
-	Redis          *cache.RedisClient
 	pathCacheClean chan struct{}
 	PathCache      sync.Map
 }
@@ -70,7 +68,7 @@ func (s *BotService) GetPath(id string) (string, bool) {
 	return val.(string), true
 }
 
-func NewBotService(bot *tgbotapi.BotAPI, cfg *config.Config, db repository.FullRepository, sqlDB *sql.DB, redis *cache.RedisClient) *BotService {
+func NewBotService(bot *tgbotapi.BotAPI, cfg *config.Config, db repository.FullRepository, sqlDB *sql.DB) *BotService {
 	authService := NewAuthService(cfg, db, db)
 	mediaService := NewMediaService(cfg)
 
@@ -86,7 +84,6 @@ func NewBotService(bot *tgbotapi.BotAPI, cfg *config.Config, db repository.FullR
 		BatchManager:   NewBatchManager(),
 		RcloneUploader: uploader.NewRcloneUploader(cfg),
 		SQLDB:          sqlDB,
-		Redis:          redis,
 		pathCacheClean: make(chan struct{}),
 	}
 

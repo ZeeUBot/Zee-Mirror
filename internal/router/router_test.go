@@ -11,7 +11,7 @@ import (
 func TestRouter_HandleMessage(t *testing.T) {
 	r := NewRouter(nil)
 	called := false
-	r.RegisterCommand("testcmd", func(_ *service.BotService, _ *tgbotapi.Message) {
+	r.RegisterCommandWithInfo(CommandInfo{Name: "testcmd"}, func(_ *service.BotService, _ *tgbotapi.Message) {
 		called = true
 	})
 

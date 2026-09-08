@@ -16,22 +16,6 @@ var (
 		Help: "Number of currently active tasks",
 	})
 
-	Throughput = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "zeemirror_throughput_bytes_total",
-		Help: "Total bytes processed by the bot",
-	}, []string{"direction"})
-
-	APIRequests = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "zeemirror_api_requests_total",
-		Help: "Total number of API requests to the dashboard",
-	}, []string{"path", "method", "status"})
-
-	DownloadDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "zeemirror_download_duration_seconds",
-		Help:    "Duration of downloads in seconds",
-		Buckets: prometheus.DefBuckets,
-	}, []string{"type", "status"})
-
 	UploadDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "zeemirror_upload_duration_seconds",
 		Help:    "Duration of uploads in seconds",

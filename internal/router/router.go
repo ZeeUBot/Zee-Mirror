@@ -43,29 +43,12 @@ func NewRouter(service *service.BotService) *Router {
 	}
 }
 
-func (r *Router) RegisterCommand(name string, handler CommandHandler) {
-	r.commands[name] = handler
-}
-
 func (r *Router) RegisterCommandWithInfo(info CommandInfo, handler CommandHandler) {
 	r.commands[info.Name] = handler
 	for _, alias := range info.Aliases {
 		r.commands[alias] = handler
 	}
 	r.commandInfos[info.Name] = &info
-}
-
-func (r *Router) GetCommandsByCategory() map[string][]CommandInfo {
-	result := make(map[string][]CommandInfo)
-	for _, info := range r.commandInfos {
-		result[info.Category] = append(result[info.Category], *info)
-	}
-	for cat := range result {
-		sort.Slice(result[cat], func(i, j int) bool {
-			return result[cat][i].Name < result[cat][j].Name
-		})
-	}
-	return result
 }
 
 func (r *Router) GetAllCommandsFlat() []CommandInfo {

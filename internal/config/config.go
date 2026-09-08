@@ -26,13 +26,11 @@ type Config struct {
 	LogFormat                string
 	AppEnv                   string
 	SentryDSN                string
-	RedisURL                 string
 	BotToken                 string
 	DatabaseURL              string
 	DashboardURL             string
 	AppHash                  string
 	RcloneTransfers          string
-	AuthPassword             string
 	Aria2RPCURL              string
 	Aria2RPCSecret           string
 	WebhookURL               string
@@ -76,7 +74,6 @@ func LoadConfig() *Config {
 		LogFormat:                getEnv("LOG_FORMAT", "text"),
 		AppEnv:                   getEnv("APP_ENV", ""),
 		SentryDSN:                os.Getenv("SENTRY_DSN"),
-		RedisURL:                 os.Getenv("REDIS_URL"),
 		SmartAutoOrganization:    getEnvBool("SMART_AUTO_ORGANIZATION", false),
 		IndexURL:                 os.Getenv("INDEX_URL"),
 		DashboardURL:             getEnv("WEB_DASHBOARD_URL", "127.0.0.1"),
@@ -88,7 +85,6 @@ func LoadConfig() *Config {
 		AppID:                    getEnvInt("APP_ID", 0),
 		AppHash:                  os.Getenv("APP_HASH"),
 		UserSessionString:        os.Getenv("USER_SESSION_STRING"),
-		AuthPassword:             os.Getenv("AUTH_PASSWORD"),
 		Aria2RPCURL:              getEnv("ARIA2_RPC_URL", "http://localhost:6800/jsonrpc"),
 		Aria2RPCSecret:           os.Getenv("ARIA2_RPC_SECRET"),
 		WebhookURL:               os.Getenv("WEBHOOK_URL"),
@@ -113,7 +109,6 @@ func LoadConfig() *Config {
 			cfg.EncryptionKey = key
 			cfg.UserSessionString = decryptConfigValue(cfg.UserSessionString, key)
 			cfg.BotToken = decryptConfigValue(cfg.BotToken, key)
-			cfg.AuthPassword = decryptConfigValue(cfg.AuthPassword, key)
 			cfg.DashboardToken = decryptConfigValue(cfg.DashboardToken, key)
 			slog.Info("Encryption key loaded, sensitive values decrypted")
 		} else {
@@ -155,14 +150,6 @@ var currentConfig atomic.Value
 func init() {
 	_ = godotenv.Load()
 	currentConfig.Store(LoadConfig())
-}
-
-func Get() *Config {
-	val, ok := currentConfig.Load().(*Config)
-	if !ok || val == nil {
-		return LoadConfig()
-	}
-	return val
 }
 
 func Reload() *Config {

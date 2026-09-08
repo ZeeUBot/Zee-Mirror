@@ -31,7 +31,7 @@ func newTestServer(t *testing.T, token string) *Server {
 	mockRepo.On("Upsert", mock.Anything, mock.AnythingOfType("domain.User")).Return(nil).Maybe()
 	mockRepo.On("GetActive", mock.Anything).Return([]domain.TaskRecord{}, nil).Maybe()
 
-	svc := service.NewBotService(bot, cfg, mockRepo, nil, nil)
+	svc := service.NewBotService(bot, cfg, mockRepo, nil)
 	return NewServer(svc, 0)
 }
 

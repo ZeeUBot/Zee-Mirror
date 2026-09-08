@@ -141,11 +141,6 @@ func TestGetHelpKeyboard(t *testing.T) {
 	assert.NotNil(t, kb)
 }
 
-func TestGetSettingsKeyboard(t *testing.T) {
-	kb := service.GetSettingsKeyboard("en")
-	assert.NotNil(t, kb)
-}
-
 func TestLineSeparator(t *testing.T) {
 	assert.NotEmpty(t, service.LineSeparator)
 	assert.Contains(t, service.LineSeparator, "━")

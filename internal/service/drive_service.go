@@ -10,8 +10,6 @@ import (
 
 	"zee-mirror/internal/domain"
 	"zee-mirror/pkg/utils"
-
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func (s *BotService) ListDriveFiles(path string) ([]DriveFile, error) {
@@ -95,8 +93,4 @@ func (s *BotService) FormatDriveFileList(path string, files []DriveFile) string 
 
 	text.WriteString("\n━━━━━━━━━━━━━━━━━━━━━━")
 	return text.String()
-}
-
-func (s *BotService) BuildDriveNavigationKeyboard(_ []DriveFile, _ string) tgbotapi.InlineKeyboardMarkup {
-	return tgbotapi.InlineKeyboardMarkup{}
 }

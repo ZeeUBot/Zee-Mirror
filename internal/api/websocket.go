@@ -99,7 +99,7 @@ type Client struct {
 }
 
 func (s *Server) handleWebsocket(w http.ResponseWriter, r *http.Request) {
-	if token := r.URL.Query().Get("token"); !s.validDashboardToken(token) {
+	if token := r.URL.Query().Get("token"); !s.authorizeToken(r.Context(), token) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}

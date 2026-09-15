@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -139,7 +138,7 @@ func (s *Server) handleUpdateTools(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "yt-dlp", "-U")
+	cmd := execCommand(ctx, "yt-dlp", "-U")
 	output, err := cmd.CombinedOutput()
 
 	result := map[string]interface{}{

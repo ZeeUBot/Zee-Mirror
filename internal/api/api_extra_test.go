@@ -236,3 +236,61 @@ func TestHandleTasks_BadRequests(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "URL is required")
 }
+
+func TestRequireAuth_RejectsUnexpectedAlg(t *testing.T) {
+	s := newTestServer(t, "secret123")
+	handler := s.requireAuth(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{"sub": "dashboard"})
+	signed, err := tok.SignedString(jwtKey("secret123"))
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest("GET", "/api/stats", nil)
+	req.Header.Set("Authorization", "Bearer "+signed)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+	req = httptest.NewRequest("GET", "/api/stats", nil)
+	req.Header.Set("Authorization", "Bearer "+mustHS256(t, "secret123"))
+	rec = httptest.NewRecorder()
+	handler(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func mustHS256(t *testing.T, secret string) string {
+	t.Helper()
+	claims := jwt.MapClaims{"sub": "dashboard", "exp": time.Now().Add(time.Hour).Unix()}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := tok.SignedString(jwtKey(secret))
+	assert.NoError(t, err)
+	return signed
+}
+
+func TestRequireAuth_PerUserAPIKey(t *testing.T) {
+	s := newTestServer(t, "secret123")
+	repo := s.Service.DB.(*mocks.MockRepository)
+	repo.On("GetUserByAPIKey", mock.Anything, "userkey").Return(&domain.User{ID: 7, IsActive: true}, nil)
+	repo.On("GetUserByAPIKey", mock.Anything, "bannedkey").Return(&domain.User{ID: 8, IsActive: false}, nil)
+	repo.On("GetUserByAPIKey", mock.Anything, "unknownkey").Return((*domain.User)(nil), domain.ErrNotFound)
+
+	handler := s.requireAuth(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+
+	req := httptest.NewRequest("GET", "/api/stats", nil)
+	req.Header.Set("X-API-Key", "userkey")
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	req = httptest.NewRequest("GET", "/api/stats", nil)
+	req.Header.Set("X-API-Key", "bannedkey")
+	rec = httptest.NewRecorder()
+	handler(rec, req)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+	req = httptest.NewRequest("GET", "/api/stats", nil)
+	req.Header.Set("X-API-Key", "unknownkey")
+	rec = httptest.NewRecorder()
+	handler(rec, req)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+}

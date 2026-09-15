@@ -2,6 +2,7 @@ package torrent
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -48,7 +49,7 @@ func (d *Aria2Daemon) Start() error {
 	}
 
 	// #nosec G702 -- args are internal constants plus optional env secret; no user input, no shell
-	d.Cmd = exec.Command("aria2c", args...)
+	d.Cmd = execCommand(context.Background(), "aria2c", args...)
 	stdoutPipe, err := d.Cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("failed to get aria2c stdout pipe: %v", err)

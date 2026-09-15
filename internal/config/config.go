@@ -40,6 +40,7 @@ type Config struct {
 	RclonePacerBurst         string
 	RclonePacerMinSleep      string
 	RcloneBufferSize         string
+	RcloneDestFallbacks      []string
 	RcloneDriveChunkSize     string
 	RcloneCheckers           string
 	DBDriver                 string
@@ -94,6 +95,7 @@ func LoadConfig() *Config {
 		RcloneCheckers:           getEnv("RCLONE_CHECKERS", "20"),
 		RcloneDriveChunkSize:     getEnv("RCLONE_DRIVE_CHUNK_SIZE", "256M"),
 		RcloneBufferSize:         getEnv("RCLONE_BUFFER_SIZE", "128M"),
+		RcloneDestFallbacks:      splitCSV(os.Getenv("RCLONE_DEST_FALLBACKS")),
 		RclonePacerMinSleep:      getEnv("RCLONE_PACER_MIN_SLEEP", "10ms"),
 		RclonePacerBurst:         getEnv("RCLONE_PACER_BURST", "200"),
 		RcloneLogLevel:           getEnv("RCLONE_LOG_LEVEL", "NOTICE"),
@@ -185,6 +187,20 @@ func getEnvInt(key string, fallback int) int {
 	return fallback
 }
 
+func splitCSV(v string) []string {
+	if strings.TrimSpace(v) == "" {
+		return nil
+	}
+	parts := strings.Split(v, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 func getEnvBool(key string, fallback bool) bool {
 	str := getEnv(key, "")
 	if str == "" {
@@ -219,6 +235,9 @@ func (c *Config) Validate() error {
 	if strings.EqualFold(c.AppEnv, "production") &&
 		(c.DashboardToken == "" || c.DashboardToken == "zee-mirror-secret") {
 		return fmt.Errorf("WEB_DASHBOARD_TOKEN must be set to a secure value when APP_ENV=production (empty or default token is not allowed)")
+	}
+	if c.UseWebhook && c.WebhookSecret == "" {
+		return fmt.Errorf("WEBHOOK_SECRET must be set when USE_WEBHOOK=true (webhook endpoint is unauthenticated without it)")
 	}
 	if c.RcloneDest == "" {
 		slog.Warn("RCLONE_DEST not set, using default: gdrive:/MirrorBot")

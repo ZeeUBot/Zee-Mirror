@@ -342,6 +342,8 @@ func TestWebSocket_NoToken(t *testing.T) {
 
 func TestWebSocket_WrongToken(t *testing.T) {
 	s := newTestServer(t, "secret123")
+	repo := s.Service.DB.(*mocks.MockRepository)
+	repo.On("GetUserByAPIKey", mock.Anything, "wrong").Return((*domain.User)(nil), domain.ErrNotFound)
 
 	req := httptest.NewRequest("GET", "/api/ws?token=wrong", nil)
 	rec := httptest.NewRecorder()

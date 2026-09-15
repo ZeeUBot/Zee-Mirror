@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -24,7 +23,7 @@ func (s *BotService) ListDriveFiles(path string) ([]DriveFile, error) {
 		"--no-modtime",
 	}
 
-	cmd := exec.CommandContext(ctx, "rclone", args...)
+	cmd := execCommand(ctx, "rclone", args...)
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("%w: rclone lsjson failed: %v", domain.ErrExternal, err)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -44,7 +43,7 @@ func (s *BotService) extractArchive(task *Task) error {
 	ctx, cancel := context.WithCancel(task.Ctx)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "7z", args...)
+	cmd := execCommand(ctx, "7z", args...)
 
 	output, err := cmd.CombinedOutput()
 
@@ -102,7 +101,7 @@ func (s *BotService) createZipArchive(task *Task) error {
 	ctx, cancel := context.WithCancel(task.Ctx)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "7z", args...)
+	cmd := execCommand(ctx, "7z", args...)
 
 	output, err := cmd.CombinedOutput()
 

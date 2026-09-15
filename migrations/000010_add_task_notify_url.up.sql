@@ -1,0 +1,1 @@
+ALTER TABLE tasks ADD COLUMN notify_url TEXT NOT NULL DEFAULT '';

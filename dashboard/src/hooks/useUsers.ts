@@ -21,12 +21,12 @@ export const useUsers = (apiToken: string) => {
     }
   }, [apiToken])
 
-  const updateUser = async (userData: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
+  const updateUser = async (userData: Record<string, unknown>): Promise<{ success: boolean; error?: string; apiKey?: string }> => {
     try {
       const response = await api.post('/api/users/update', userData)
-      if (response.status === 200) {
+      if (response.status >= 200 && response.status < 300) {
         await fetchUsers()
-        return { success: true }
+        return { success: true, apiKey: (response.data as { apiKey?: string }).apiKey }
       }
       return { success: false, error: 'Update failed' }
     } catch {
@@ -47,12 +47,12 @@ export const useUsers = (apiToken: string) => {
     }
   }
 
-  const addUser = async (userData: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
+  const addUser = async (userData: Record<string, unknown>): Promise<{ success: boolean; error?: string; apiKey?: string }> => {
     try {
       const response = await api.post('/api/users/add', userData)
-      if (response.status === 201) {
+      if (response.status >= 200 && response.status < 300) {
         await fetchUsers()
-        return { success: true }
+        return { success: true, apiKey: (response.data as { apiKey?: string }).apiKey }
       }
       return { success: false, error: (response.data as { error?: string }).error || 'Add failed' }
     } catch {

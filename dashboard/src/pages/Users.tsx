@@ -2,7 +2,7 @@ import { useState, SyntheticEvent } from 'react'
 import { useUsers } from '../hooks/useUsers'
 import { formatBytes } from '../utils/format'
 import { usePopups } from '../hooks/usePopups'
-import { UserPlus, RefreshCw, Edit2, Trash2, X, Activity, Calendar } from 'lucide-react'
+import { UserPlus, RefreshCw, Edit2, Trash2, X, Activity, Calendar, KeyRound } from 'lucide-react'
 import { User } from '../types'
 
 interface UsersProps {
@@ -77,9 +77,30 @@ const Users: React.FC<UsersProps> = ({ apiToken }) => {
     if (result && result.success) {
       setIsModalOpen(false)
       setEditingUser(null)
-      showToast(isAdding ? 'Subject authorized' : 'Access updated', 'success')
+      if (result.apiKey) {
+        showAlert('API Key', `X-API-Key: ${result.apiKey}`, { type: 'success' })
+      } else {
+        showToast(isAdding ? 'Subject authorized' : 'Access updated', 'success')
+      }
     } else {
       showAlert('Operation Failed', result?.error || 'Unknown error', { type: 'error' })
+    }
+  }
+
+  const handleRotateKey = async (user: User) => {
+    if (!(await showConfirm('Rotate API Key', `Issue a new API key for ${user.username || user.id}? The old key stops working.`))) return
+    const result = await updateUser({
+      id: user.id,
+      role: user.role,
+      maxDailyTasks: user.maxDailyTasks,
+      maxDailyBandwidth: user.maxDailyBandwidth,
+      expiresAt: user.expiresAt?.Valid ? user.expiresAt.Time : '',
+      rotateApiKey: true,
+    })
+    if (result.success && result.apiKey) {
+      showAlert('New API Key', `X-API-Key: ${result.apiKey}`, { type: 'success' })
+    } else if (!result.success) {
+      showAlert('Rotation Failed', result.error || 'Unknown error', { type: 'error' })
     }
   }
 
@@ -197,6 +218,9 @@ const Users: React.FC<UsersProps> = ({ apiToken }) => {
                             {user.username || 'Anonymous'}
                           </p>
                           <p className="text-[10px] font-mono text-slate-400">ID:{user.id}</p>
+                          {user.apiKey && (
+                            <p className="text-[10px] font-mono text-slate-400">key:{user.apiKey.slice(0, 6)}…</p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -267,6 +291,12 @@ const Users: React.FC<UsersProps> = ({ apiToken }) => {
                           className="p-3 bg-blue-500/10 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-all"
                         >
                           <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleRotateKey(user)}
+                          className="p-3 bg-amber-500/10 text-amber-500 rounded-xl hover:bg-amber-500 hover:text-white transition-all"
+                        >
+                          <KeyRound size={16} />
                         </button>
                         {user.role !== 'owner' && (
                           <button

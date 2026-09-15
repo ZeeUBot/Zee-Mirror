@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -211,7 +210,7 @@ func (e *Engine) Download(ctx context.Context, task *domain.Task, outputDir stri
 	}
 
 	args := e.buildYTDLPArgs(task, outputDir)
-	cmd := exec.CommandContext(ctx, "yt-dlp", args...)
+	cmd := execCommand(ctx, "yt-dlp", args...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -315,7 +314,7 @@ func (e *Engine) burnSubtitles(ctx context.Context, dir string) error {
 		outputFile,
 	}
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+	cmd := execCommand(ctx, "ffmpeg", args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("ffmpeg failed: %v, output: %s", err, string(out))
 	}
@@ -462,7 +461,7 @@ func (e *Engine) parseProgress(stdout interface{}, onProgress func(downloader.Pr
 	}
 }
 func (e *Engine) runYTDLP(ctx context.Context, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "yt-dlp", args...)
+	cmd := execCommand(ctx, "yt-dlp", args...)
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

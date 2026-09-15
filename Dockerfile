@@ -47,7 +47,7 @@ RUN apk add --no-cache \
 # Cache bust for yt-dlp: 2026-06-16
 
 
-COPY --from=rclone/rclone:latest /usr/local/bin/rclone /usr/bin/rclone
+COPY --from=rclone/rclone:1.75.1 /usr/local/bin/rclone /usr/bin/rclone
 RUN chmod 755 /usr/bin/rclone
 
 RUN addgroup -S botgroup && adduser -D -G botgroup botuser

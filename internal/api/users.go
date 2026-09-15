@@ -1,13 +1,23 @@
 package api
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
 	"zee-mirror/internal/domain"
 )
+
+func generateAPIKey() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
 
 func (s *Server) handleGetUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -52,6 +62,7 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		ID                int64  `json:"id"`
 		MaxDailyBandwidth int64  `json:"maxDailyBandwidth"`
 		MaxDailyTasks     int    `json:"maxDailyTasks"`
+		RotateAPIKey      bool   `json:"rotateApiKey"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -86,8 +97,23 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	resp := map[string]string{"status": "success"}
+	if req.RotateAPIKey {
+		key, kerr := generateAPIKey()
+		if kerr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "failed to generate key"})
+			return
+		}
+		if serr := s.Service.DB.SetAPIKey(ctx, req.ID, key); serr != nil {
+			slog.Error("Failed to rotate API key", "error", serr)
+		} else {
+			resp["apiKey"] = key
+		}
+	}
+
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -178,7 +204,16 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if encodeErr := json.NewEncoder(w).Encode(map[string]string{"status": "success"}); encodeErr != nil {
+	resp := map[string]string{"status": "success"}
+	if key, kerr := generateAPIKey(); kerr == nil {
+		if serr := s.Service.DB.SetAPIKey(ctx, user.ID, key); serr == nil {
+			resp["apiKey"] = key
+		} else {
+			slog.Error("Failed to store API key", "error", serr)
+		}
+	}
+
+	if encodeErr := json.NewEncoder(w).Encode(resp); encodeErr != nil {
 		slog.Debug("Failed to encode success response", "error", encodeErr)
 	}
 }

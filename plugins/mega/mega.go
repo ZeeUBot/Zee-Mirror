@@ -48,7 +48,7 @@ func (e *Engine) Download(ctx context.Context, task *domain.Task, outputDir stri
 		args = append(args, task.URL, outputDir)
 	}
 
-	cmd := exec.CommandContext(ctx, cmdName, args...)
+	cmd := execCommand(ctx, cmdName, args...)
 
 	onProgress(downloader.ProgressUpdate{
 		Message: "Mengunduh file dari Mega (Progress tidak tersedia di mode CLI)...",

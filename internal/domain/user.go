@@ -11,6 +11,7 @@ type User struct {
 	Username          string       `json:"username"`
 	Role              string       `json:"role"`
 	Language          string       `json:"language"`
+	APIKey            string       `json:"apiKey,omitempty"`
 	ID                int64        `json:"id"`
 	MaxDailyBandwidth int64        `json:"maxDailyBandwidth"`
 	MaxDailyTasks     int          `json:"maxDailyTasks"`

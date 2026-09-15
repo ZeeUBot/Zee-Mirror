@@ -12,6 +12,7 @@ type TaskRepository interface {
 	GetActive(ctx context.Context) ([]domain.TaskRecord, error)
 	GetRecoverable(ctx context.Context) ([]domain.TaskRecord, error)
 	UpdateStatus(ctx context.Context, id, status, err string) error
+	SetNotifyURLByUser(ctx context.Context, userID int64, url string) error
 	UpdateMD5(ctx context.Context, id, md5 string) error
 	ListTasks(ctx context.Context, filter domain.TaskFilter) ([]domain.TaskRecord, error)
 	DeleteOld(ctx context.Context, before string) (int, error)
@@ -38,6 +39,8 @@ type UserRepository interface {
 	SetExpiration(ctx context.Context, id int64, expiresAt time.Time) error
 	SetLanguage(ctx context.Context, id int64, lang string) error
 	GetAll(ctx context.Context) ([]domain.User, error)
+	GetUserByAPIKey(ctx context.Context, apiKey string) (*domain.User, error)
+	SetAPIKey(ctx context.Context, id int64, apiKey string) error
 	GetCount(ctx context.Context) (int, error)
 	Delete(ctx context.Context, id int64) error
 }

@@ -1,9 +1,9 @@
 package basic
 
 import (
+	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -43,7 +43,7 @@ func HandleSpeed(s *service.BotService, message *tgbotapi.Message) {
 	}
 
 	go func() {
-		cmd := exec.Command("speedtest-cli", "--simple")
+		cmd := execCommand(context.Background(), "speedtest-cli", "--simple")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			text := fmt.Sprintf("❌ *Speedtest Error*\n\n`%s`", utils.EscapeMarkdownV2Code(err.Error()))

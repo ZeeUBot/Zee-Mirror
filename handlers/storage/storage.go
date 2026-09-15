@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -27,7 +26,7 @@ func GetAvailableStorages(s *service.BotService) ([]Provider, error) {
 
 	configPath := s.TaskManager.ConfigDir + "/rclone.conf"
 
-	cmd := exec.CommandContext(ctx, "rclone", "listremotes", "--config", configPath, "--long")
+	cmd := execCommand(ctx, "rclone", "listremotes", "--config", configPath, "--long")
 	output, err := cmd.Output()
 
 	if err != nil {
@@ -158,7 +157,7 @@ func handleStorageBrowse(s *service.BotService, callback *tgbotapi.CallbackQuery
 
 	configPath := s.TaskManager.ConfigDir + "/rclone.conf"
 
-	cmd := exec.CommandContext(ctx, "rclone", "lsjson", remotePath, "--config", configPath)
+	cmd := execCommand(ctx, "rclone", "lsjson", remotePath, "--config", configPath)
 	output, err := cmd.Output()
 
 	if err != nil {
@@ -201,7 +200,7 @@ func handleStorageInfo(s *service.BotService, callback *tgbotapi.CallbackQuery, 
 
 	configPath := s.TaskManager.ConfigDir + "/rclone.conf"
 
-	cmd := exec.CommandContext(ctx, "rclone", "about", storageName+":", "--config", configPath, "--json")
+	cmd := execCommand(ctx, "rclone", "about", storageName+":", "--config", configPath, "--json")
 	output, err := cmd.Output()
 
 	var text strings.Builder

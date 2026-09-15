@@ -36,6 +36,7 @@ export interface User {
     expiresAt?: { Valid: boolean; Time: string }
     usedTasks?: number
     usedBandwidth?: number
+    apiKey?: string
 }
 
 export interface FileItem {

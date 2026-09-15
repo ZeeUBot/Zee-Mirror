@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -83,7 +82,7 @@ func (e *Engine) Download(ctx context.Context, task *domain.Task, outputDir stri
 	cmdCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	cmd := exec.CommandContext(cmdCtx, "rclone", args...)
+	cmd := execCommand(cmdCtx, "rclone", args...)
 	stderr, _ := cmd.StderrPipe()
 
 	if err := cmd.Start(); err != nil {
@@ -227,7 +226,7 @@ func GetDriveInfo(ctx context.Context, id, configPath, remoteName string, isFold
 		"--no-mimetype",
 		"--no-modtime",
 	}
-	idCmd := exec.CommandContext(ctx, "rclone", idArgs...)
+	idCmd := execCommand(ctx, "rclone", idArgs...)
 	if out, err := idCmd.Output(); err == nil {
 		var info map[string]interface{}
 		if json.Unmarshal(out, &info) == nil {
@@ -282,7 +281,7 @@ func GetDriveInfo(ctx context.Context, id, configPath, remoteName string, isFold
 		"--json",
 	}
 
-	cmd := exec.CommandContext(ctx, "rclone", args...)
+	cmd := execCommand(ctx, "rclone", args...)
 	output, err := cmd.Output()
 	if err == nil {
 		var info map[string]interface{}

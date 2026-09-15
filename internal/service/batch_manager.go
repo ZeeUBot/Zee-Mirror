@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -426,7 +425,7 @@ func (s *BotService) downloadBatchItem(batch *BatchTask, task *Task) error {
 	ctx, cancel := context.WithCancel(task.Ctx)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "aria2c", args...)
+	cmd := execCommand(ctx, "aria2c", args...)
 	output, err := cmd.CombinedOutput()
 
 	if task.Status == StatusCancelled {
@@ -487,7 +486,7 @@ func (s *BotService) zipBatchResults(batch *BatchTask) error {
 	ctx, cancel := context.WithCancel(batch.Ctx)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "7z", args...)
+	cmd := execCommand(ctx, "7z", args...)
 	output, err := cmd.CombinedOutput()
 
 	if batch.Status == StatusCancelled {
@@ -542,7 +541,7 @@ func (s *BotService) uploadBatchResults(batch *BatchTask) error {
 	ctx, cancel := context.WithCancel(batch.Ctx)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "rclone", args...)
+	cmd := execCommand(ctx, "rclone", args...)
 	output, err := cmd.CombinedOutput()
 
 	if batch.Status == StatusCancelled {
@@ -560,7 +559,7 @@ func (s *BotService) uploadBatchResults(batch *BatchTask) error {
 		filepath.Join(s.TaskManager.RcloneDest, uploadName),
 	}
 
-	linkCmd := exec.CommandContext(ctx, "rclone", linkArgs...)
+	linkCmd := execCommand(ctx, "rclone", linkArgs...)
 	linkOutput, linkErr := linkCmd.Output()
 	if linkErr == nil {
 		batch.RemoteURL = strings.TrimSpace(string(linkOutput))

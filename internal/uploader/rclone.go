@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -88,6 +87,46 @@ func (r *RcloneUploader) Upload(ctx context.Context, task *domain.Task, onProgre
 		}
 	}
 
+	dests := append([]string{remoteDest}, r.fallbackDests(organizer.GetTargetFolder(task.FileName))...)
+	var lastErr error
+	for i, dest := range dests {
+		if i > 0 {
+			slog.Info("Failing over upload to fallback remote", "taskID", task.ID, "dest", dest)
+		}
+		lastErr = r.uploadToDest(ctx, task, uploadPath, totalSize, dest, startTime, onProgress)
+		if lastErr == nil || task.Status == domain.StatusCancelled || ctx.Err() != nil {
+			break
+		}
+	}
+	if lastErr != nil {
+		metrics.UploadDuration.WithLabelValues("rclone", "failed").Observe(time.Since(startTime).Seconds())
+		return lastErr
+	}
+	if task.Dest2 != "" {
+		if info, err := os.Stat(uploadPath); err == nil && !info.IsDir() {
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				f, err := os.Open(uploadPath)
+				if err != nil {
+					slog.Error("Failed to open file for Dest2 upload", "taskID", task.ID, "error", err)
+					return
+				}
+				defer f.Close()
+				rcloneDest2 := filepath.Join(task.Dest2, task.FileName)
+				if err := r.UploadToCustomDest(ctx, f, task.FileName, rcloneDest2); err != nil {
+					slog.Error("Failed to upload to Dest2", "taskID", task.ID, "dest2", task.Dest2, "error", err)
+				}
+			}()
+			wg.Wait()
+		}
+	}
+
+	return nil
+}
+
+func (r *RcloneUploader) uploadToDest(ctx context.Context, task *domain.Task, uploadPath string, totalSize int64, remoteDest string, startTime time.Time, onProgress func(ProgressUpdate)) error {
 	remotePath := filepath.Join(remoteDest, task.FileName)
 	task.RemotePath = remotePath
 
@@ -122,7 +161,7 @@ func (r *RcloneUploader) Upload(ctx context.Context, task *domain.Task, onProgre
 	cmdCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	cmd := exec.CommandContext(cmdCtx, "rclone", args...)
+	cmd := execCommand(cmdCtx, "rclone", args...)
 
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
@@ -218,28 +257,21 @@ func (r *RcloneUploader) Upload(ctx context.Context, task *domain.Task, onProgre
 	onProgress(ProgressUpdate{Progress: 100, UploadedSize: totalSize, TotalSize: totalSize})
 	metrics.UploadDuration.WithLabelValues("rclone", "success").Observe(time.Since(startTime).Seconds())
 
-	if task.Dest2 != "" {
-		if info, err := os.Stat(uploadPath); err == nil && !info.IsDir() {
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				f, err := os.Open(uploadPath)
-				if err != nil {
-					slog.Error("Failed to open file for Dest2 upload", "taskID", task.ID, "error", err)
-					return
-				}
-				defer f.Close()
-				rcloneDest2 := filepath.Join(task.Dest2, task.FileName)
-				if err := r.UploadToCustomDest(ctx, f, task.FileName, rcloneDest2); err != nil {
-					slog.Error("Failed to upload to Dest2", "taskID", task.ID, "dest2", task.Dest2, "error", err)
-				}
-			}()
-			wg.Wait()
-		}
-	}
-
 	return nil
+}
+func (r *RcloneUploader) fallbackDests(subFolder string) []string {
+	var out []string
+	for _, fb := range r.cfg.RcloneDestFallbacks {
+		fb = strings.TrimSpace(fb)
+		if fb == "" {
+			continue
+		}
+		if subFolder != "" {
+			fb = filepath.Join(fb, subFolder)
+		}
+		out = append(out, fb)
+	}
+	return out
 }
 
 func (r *RcloneUploader) UploadToCustomDest(ctx context.Context, content io.Reader, fileName, dest string) error {
@@ -281,7 +313,7 @@ func (r *RcloneUploader) UploadToCustomDest(ctx context.Context, content io.Read
 		"--log-level", r.cfg.RcloneLogLevel,
 	}
 
-	cmd := exec.CommandContext(ctx, "rclone", args...)
+	cmd := execCommand(ctx, "rclone", args...)
 	slog.Info("Starting rclone upload to custom dest", "dest", dest, "fileName", fileName, "args", strings.Join(args, " "))
 
 	output, err := cmd.CombinedOutput()
@@ -381,7 +413,7 @@ func (r *RcloneUploader) generateIDBasedIndexURL(ctx context.Context, task *doma
 	var err error
 
 	for i := 0; i < 2; i++ {
-		lsCmd := exec.CommandContext(ctx, "rclone", lsArgs...)
+		lsCmd := execCommand(ctx, "rclone", lsArgs...)
 		lsOutput, err = lsCmd.Output()
 		if err == nil {
 			break
@@ -427,7 +459,7 @@ func (r *RcloneUploader) generateIDBasedIndexURL(ctx context.Context, task *doma
 		}
 
 		for i := 0; i < 3; i++ {
-			cmd := exec.CommandContext(ctx, "rclone", params...)
+			cmd := execCommand(ctx, "rclone", params...)
 			out, errFallback := cmd.Output()
 			if errFallback == nil {
 				var files []map[string]interface{}
@@ -489,7 +521,7 @@ func (r *RcloneUploader) generateIDBasedIndexURL(ctx context.Context, task *doma
 				"--no-mimetype",
 				"--depth", "0",
 			}
-			rootLsCmd := exec.CommandContext(ctx, "rclone", rootLsArgs...)
+			rootLsCmd := execCommand(ctx, "rclone", rootLsArgs...)
 			if rootLsOutput, err := rootLsCmd.Output(); err == nil {
 				var files []map[string]interface{}
 				if json.Unmarshal(rootLsOutput, &files) == nil && len(files) > 0 {
@@ -524,7 +556,7 @@ func (r *RcloneUploader) generateIDBasedIndexURL(ctx context.Context, task *doma
 			"--no-mimetype",
 		}
 
-		linkCmdParent := exec.CommandContext(ctx, "rclone", linkArgsParent...)
+		linkCmdParent := execCommand(ctx, "rclone", linkArgsParent...)
 		if linkOutputParent, err := linkCmdParent.Output(); err == nil {
 			var files []map[string]interface{}
 			if json.Unmarshal(linkOutputParent, &files) == nil {
@@ -596,7 +628,7 @@ func (r *RcloneUploader) generateDirectLink(ctx context.Context, task *domain.Ta
 		currentRemotePath,
 	}
 
-	linkCmd := exec.CommandContext(ctx, "rclone", linkArgs...)
+	linkCmd := execCommand(ctx, "rclone", linkArgs...)
 	linkOutput, linkErr := linkCmd.Output()
 	if linkErr == nil {
 		task.RemoteURL = strings.TrimSpace(string(linkOutput))
@@ -621,7 +653,7 @@ func (r *RcloneUploader) generateDirectoryLink(ctx context.Context, task *domain
 		"--dirs-only",
 		parentPath,
 	}
-	idCmd := exec.CommandContext(ctx, "rclone", idArgs...)
+	idCmd := execCommand(ctx, "rclone", idArgs...)
 	idOutput, idErr := idCmd.Output()
 	if idErr != nil {
 		slog.Error("Failed to list parent directory contents", "error", idErr)
@@ -651,7 +683,7 @@ func (r *RcloneUploader) generateDirectoryLink(ctx context.Context, task *domain
 		"--config", configPath,
 		parentPath,
 	}
-	linkCmdParent := exec.CommandContext(ctx, "rclone", linkArgsParent...)
+	linkCmdParent := execCommand(ctx, "rclone", linkArgsParent...)
 	linkOutputParent, linkErrParent := linkCmdParent.Output()
 	if linkErrParent == nil {
 		baseURL := strings.TrimSpace(string(linkOutputParent))

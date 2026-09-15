@@ -63,6 +63,7 @@ type Task struct {
 	RemoteURL         string
 	TelegramFileID    string
 	TelegramFilePath  string
+	NotifyURL         string
 	Error             string
 	Password          string
 	Quality           string
@@ -106,6 +107,7 @@ type TaskRecord struct {
 	Dest        string
 	Dest2       string
 	RemoteURL   string
+	NotifyURL   string
 	// #nosec G117 -- archive password must never leave the server via API JSON
 	Password       string `json:"-"`
 	Error          string
@@ -158,6 +160,7 @@ type TaskSnapshot struct {
 	RemoteURL        string     `json:"remoteURL"`
 	TelegramFileID   string     `json:"telegramFileID,omitempty"`
 	TelegramFilePath string     `json:"telegramFilePath,omitempty"`
+	NotifyURL        string     `json:"-"`
 	Error            string     `json:"error"`
 	// #nosec G117 -- archive password must never leave the server via API/websocket JSON
 	Password          string        `json:"-"`
@@ -205,6 +208,7 @@ func (t *Task) GetSnapshot() TaskSnapshot {
 		RemoteURL:         t.RemoteURL,
 		TelegramFileID:    t.TelegramFileID,
 		TelegramFilePath:  t.TelegramFilePath,
+		NotifyURL:         t.NotifyURL,
 		TotalSize:         t.TotalSize,
 		DownloadedSize:    t.DownloadedSize,
 		UploadedSize:      t.UploadedSize,

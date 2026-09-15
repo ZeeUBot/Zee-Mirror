@@ -12,7 +12,9 @@ import (
 
 func (s *BotService) updateTaskStatus(task *Task) {
 	snapshot := task.GetSnapshot()
-
+	if snapshot.NotifyURL != "" && (snapshot.Status == StatusCompleted || snapshot.Status == StatusFailed || snapshot.Status == StatusCancelled) {
+		go s.notifyTaskWebhook(snapshot)
+	}
 	if snapshot.Status != StatusCompleted && snapshot.Status != StatusFailed && snapshot.Status != StatusCancelled {
 		s.UpdateSharedDashboardNonBlocking(snapshot.ChatID, false, true)
 		return

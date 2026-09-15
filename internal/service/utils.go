@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -29,9 +28,9 @@ func GenerateThumbnail(ctx context.Context, videoPath, downloadDir string) (stri
 		return "", fmt.Errorf("%w: video path is not within allowed directory", domain.ErrUnauthorized)
 	}
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", videoPath, "-ss", "00:00:05", "-vframes", "1", "-q:v", "2", thumbnailPath, "-y")
+	cmd := execCommand(ctx, "ffmpeg", "-i", videoPath, "-ss", "00:00:05", "-vframes", "1", "-q:v", "2", thumbnailPath, "-y")
 	if err := cmd.Run(); err != nil {
-		cmd = exec.CommandContext(ctx, "ffmpeg", "-i", videoPath, "-ss", "00:00:00", "-vframes", "1", "-q:v", "2", thumbnailPath, "-y")
+		cmd = execCommand(ctx, "ffmpeg", "-i", videoPath, "-ss", "00:00:00", "-vframes", "1", "-q:v", "2", thumbnailPath, "-y")
 		if err := cmd.Run(); err != nil {
 			return "", err
 		}
@@ -105,7 +104,7 @@ func (s *BotService) DownloadFile(url, destPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "curl", "-L", "-o", destPath, url)
+	cmd := execCommand(ctx, "curl", "-L", "-o", destPath, url)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%w: curl failed: %v\nOutput: %s", domain.ErrExternal, err, string(output))

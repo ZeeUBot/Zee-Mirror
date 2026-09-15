@@ -526,3 +526,13 @@ func GenerateAllCommandsHelp(commands []HelpCommandEntry) string {
 
 	return service.ProfessionalMessage("ALL COMMANDS", sb.String())
 }
+
+func GetHelpNotify() string {
+	return service.HelpDetailMessage(
+		"🔔 NOTIFY",
+		"Mendaftarkan URL webhook untuk notifikasi otomatis saat task selesai atau gagal.",
+		"`/notify <webhook_url>` — Daftarkan webhook",
+		"`/notify off` — Hapus webhook",
+		"",
+	)
+}

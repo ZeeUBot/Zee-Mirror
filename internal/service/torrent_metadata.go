@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -103,7 +102,7 @@ func (s *BotService) fetchMagnetMetadata(sessionID, urlStr, tmpDir string) (stri
 		urlStr,
 	}
 
-	cmd := exec.CommandContext(fetchCtx, "aria2c", args...)
+	cmd := execCommand(fetchCtx, "aria2c", args...)
 	outputBytes, _ := cmd.CombinedOutput()
 	output := stripANSI(string(outputBytes))
 
@@ -205,7 +204,7 @@ func (s *BotService) parseTorrentMetadataFile(sessionID, torrentPath string) []d
 		return nil
 	}
 
-	cmd := exec.CommandContext(ctx, "aria2c", "--show-files=true", torrentPath)
+	cmd := execCommand(ctx, "aria2c", "--show-files=true", torrentPath)
 	outputBytes, err := cmd.CombinedOutput()
 	cleanOutput := stripANSI(string(outputBytes))
 

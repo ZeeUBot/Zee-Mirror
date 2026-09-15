@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/json"
@@ -25,8 +26,20 @@ func (s *Server) validDashboardToken(tokenStr string) bool {
 	}
 	token, err := jwt.Parse(tokenStr, func(_ *jwt.Token) (interface{}, error) {
 		return jwtKey(s.Service.Config.DashboardToken), nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	return err == nil && token.Valid
+}
+
+// authorizeToken accepts dashboard tokens/JWT or an active user's personal API key.
+func (s *Server) authorizeToken(ctx context.Context, tokenStr string) bool {
+	if tokenStr == "" {
+		return false
+	}
+	if s.validDashboardToken(tokenStr) {
+		return true
+	}
+	u, err := s.Service.DB.GetUserByAPIKey(ctx, tokenStr)
+	return err == nil && u != nil && u.IsActive
 }
 
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
@@ -34,14 +47,14 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 		if tokenStr := r.Header.Get("Authorization"); strings.HasPrefix(tokenStr, "Bearer ") {
 			token, err := jwt.Parse(strings.TrimPrefix(tokenStr, "Bearer "), func(_ *jwt.Token) (interface{}, error) {
 				return jwtKey(s.Service.Config.DashboardToken), nil
-			})
+			}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 			if err == nil && token.Valid {
 				next(w, r)
 				return
 			}
 		}
 
-		if apiKey := r.Header.Get("X-API-Key"); s.validDashboardToken(apiKey) {
+		if s.authorizeToken(r.Context(), r.Header.Get("X-API-Key")) {
 			next(w, r)
 			return
 		}

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -200,5 +201,78 @@ func TestSettingsOperations(t *testing.T) {
 	}
 	if gotVal != val {
 		t.Errorf("Get setting got %s, want %s", gotVal, val)
+	}
+}
+
+func TestUserAPIKey(t *testing.T) {
+	db, tempDir := setupTestDB(t)
+	defer func() { _ = os.RemoveAll(tempDir) }()
+	defer func() { _ = db.Close() }()
+	ctx := context.Background()
+
+	userID := int64(777)
+	if err := db.Upsert(ctx, domain.User{ID: userID, Username: "keyed", Role: "authorized", CreatedAt: time.Now()}); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if err := db.SetAPIKey(ctx, userID, "abc123"); err != nil {
+		t.Fatalf("SetAPIKey: %v", err)
+	}
+
+	u, err := db.GetUserByAPIKey(ctx, "abc123")
+	if err != nil || u == nil || u.ID != userID {
+		t.Fatalf("GetUserByAPIKey = (%v, %v), want user %d", u, err, userID)
+	}
+
+	if _, gerr := db.GetUserByAPIKey(ctx, "wrong"); !errors.Is(gerr, domain.ErrNotFound) {
+		t.Errorf("wrong key: got %v, want ErrNotFound", gerr)
+	}
+	if _, gerr := db.GetUserByAPIKey(ctx, ""); !errors.Is(gerr, domain.ErrNotFound) {
+		t.Errorf("empty key: got %v, want ErrNotFound", gerr)
+	}
+
+	users, err := db.GetAll(ctx)
+	if err != nil {
+		t.Fatalf("GetAll: %v", err)
+	}
+	for _, gu := range users {
+		if gu.ID == userID && gu.APIKey != "abc123" {
+			t.Errorf("GetAll did not return api_key, got %q", gu.APIKey)
+		}
+	}
+}
+
+func TestSetNotifyURLByUser(t *testing.T) {
+	db, tempDir := setupTestDB(t)
+	defer func() { _ = os.RemoveAll(tempDir) }()
+	defer func() { _ = db.Close() }()
+	ctx := context.Background()
+
+	active := domain.TaskRecord{ID: "n1", Status: "downloading", ChatID: 1, UserID: 300}
+	done := domain.TaskRecord{ID: "n2", Status: "completed", ChatID: 1, UserID: 300}
+	other := domain.TaskRecord{ID: "n3", Status: "downloading", ChatID: 2, UserID: 301}
+	for _, tr := range []domain.TaskRecord{active, done, other} {
+		if err := db.Save(ctx, tr); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+	}
+
+	if err := db.SetNotifyURLByUser(ctx, 300, "https://hook.example/x"); err != nil {
+		t.Fatalf("SetNotifyURLByUser: %v", err)
+	}
+
+	got, err := db.GetTaskByID(ctx, "n1")
+	if err != nil || got.NotifyURL != "https://hook.example/x" {
+		t.Errorf("active task notify = (%q, %v), want url", got.NotifyURL, err)
+	}
+	got, _ = db.GetTaskByID(ctx, "n3")
+	if got.NotifyURL != "" {
+		t.Errorf("other user task should be untouched, got %q", got.NotifyURL)
+	}
+	// terminal task n2 not selected, and Save of a record without notify must not wipe it on conflict
+	again := domain.TaskRecord{ID: "n1", Status: "downloading", ChatID: 1, UserID: 300}
+	_ = db.Save(ctx, again)
+	got, _ = db.GetTaskByID(ctx, "n1")
+	if got.NotifyURL != "https://hook.example/x" {
+		t.Errorf("Save overwrote notify_url: %q", got.NotifyURL)
 	}
 }

@@ -3,7 +3,6 @@ package basic
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -133,7 +132,7 @@ func handleSpeedFromCallback(s *service.BotService, callback *tgbotapi.CallbackQ
 	_, _ = s.Bot.Send(editMsg)
 
 	go func() {
-		cmd := exec.Command("speedtest-cli", "--simple")
+		cmd := execCommand(context.Background(), "speedtest-cli", "--simple")
 		output, err := cmd.CombinedOutput()
 
 		var text string

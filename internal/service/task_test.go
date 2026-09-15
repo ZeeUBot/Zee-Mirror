@@ -123,6 +123,7 @@ func TestTask_SetError_CancelWins(t *testing.T) {
 
 func TestBatchTask_Cancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	b := &service.BatchTask{ID: "b1", Status: service.StatusDownloading, Ctx: ctx, CancelFunc: cancel}
 
 	assert.True(t, b.Cancel())

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -156,5 +157,23 @@ func TestValidate_DevelopmentDefaultTokenAllowed(t *testing.T) {
 	err := cfg.Validate()
 	if err != nil {
 		t.Errorf("default token should be allowed outside production: %v", err)
+	}
+}
+
+func TestValidate_WebhookRequiresSecret(t *testing.T) {
+	cfg := &Config{
+		BotTokens:  []string{"token1"},
+		OwnerID:    12345,
+		UseWebhook: true,
+		WebhookURL: "https://example.com/hook",
+		RcloneDest: "gdrive:/test",
+	}
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), "WEBHOOK_SECRET") {
+		t.Errorf("expected WEBHOOK_SECRET error, got: %v", err)
+	}
+	cfg.WebhookSecret = "s3cret"
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("unexpected error with secret set: %v", err)
 	}
 }

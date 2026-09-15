@@ -39,6 +39,10 @@ func (m *MockRepository) UpdateStatus(ctx context.Context, id, status, err strin
 	args := m.Called(ctx, id, status, err)
 	return args.Error(0)
 }
+func (m *MockRepository) SetNotifyURLByUser(ctx context.Context, userID int64, url string) error {
+	args := m.Called(ctx, userID, url)
+	return args.Error(0)
+}
 
 func (m *MockRepository) DeleteOld(ctx context.Context, before string) (int, error) {
 	args := m.Called(ctx, before)
@@ -132,6 +136,15 @@ func (m *MockRepository) GetCount(ctx context.Context) (int, error) {
 
 func (m *MockRepository) Delete(ctx context.Context, id int64) error {
 	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+func (m *MockRepository) GetUserByAPIKey(ctx context.Context, apiKey string) (*domain.User, error) {
+	args := m.Called(ctx, apiKey)
+	u, _ := args.Get(0).(*domain.User)
+	return u, args.Error(1)
+}
+func (m *MockRepository) SetAPIKey(ctx context.Context, id int64, apiKey string) error {
+	args := m.Called(ctx, id, apiKey)
 	return args.Error(0)
 }
 

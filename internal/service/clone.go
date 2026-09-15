@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -116,7 +115,7 @@ func (s *BotService) cloneWithRclone(task *Task) {
 	ctx, cancel := context.WithCancel(task.Ctx)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "rclone", args...)
+	cmd := execCommand(ctx, "rclone", args...)
 	stderr, _ := cmd.StderrPipe()
 
 	slog.Info("Starting rclone clone", "taskID", task.ID, "args", strings.Join(args, " "))
@@ -229,7 +228,7 @@ func (s *BotService) parseCloneProgress(task *Task, reader io.ReadCloser) {
 
 func (s *BotService) getRcloneSize(ctx context.Context, remotePath, configPath string) (int64, error) {
 	args := []string{"size", "--json", remotePath, "--config", configPath}
-	cmd := exec.CommandContext(ctx, "rclone", args...)
+	cmd := execCommand(ctx, "rclone", args...)
 	output, err := cmd.Output()
 	if err != nil {
 		return 0, err

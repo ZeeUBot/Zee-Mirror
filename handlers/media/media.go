@@ -71,7 +71,7 @@ func HandleExtractAudio(s *service.BotService, message *tgbotapi.Message, args s
 	inputName := filepath.Base(inputPath)
 	outputName := filepath.Base(outputPath)
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", inputName, "-vn", "-acodec", "libmp3lame", "-q:a", "2", outputName, "-y")
+	cmd := execCommand(ctx, "ffmpeg", "-i", inputName, "-vn", "-acodec", "libmp3lame", "-q:a", "2", outputName, "-y")
 	cmd.Dir = inputDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -152,7 +152,7 @@ func HandleCompressVideo(s *service.BotService, message *tgbotapi.Message, args 
 	inputName := filepath.Base(inputPath)
 	outputName := filepath.Base(outputPath)
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", inputName,
+	cmd := execCommand(ctx, "ffmpeg", "-i", inputName,
 		"-c:v", "libx264", "-crf", crf, "-preset", "medium",
 		"-c:a", "aac", "-b:a", "128k",
 		outputName, "-y")
@@ -233,7 +233,7 @@ func HandleGenerateThumbnail(s *service.BotService, message *tgbotapi.Message, a
 	inputName := filepath.Base(inputPath)
 	outputName := filepath.Base(outputPath)
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", inputName,
+	cmd := execCommand(ctx, "ffmpeg", "-i", inputName,
 		"-ss", timestamp, "-vframes", "1",
 		"-q:v", "2", outputName, "-y")
 	cmd.Dir = inputDir
@@ -304,7 +304,7 @@ func HandleEmbedSubtitle(s *service.BotService, message *tgbotapi.Message, args 
 
 	inputDir := filepath.Dir(videoPath)
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", filepath.Base(videoPath),
+	cmd := execCommand(ctx, "ffmpeg", "-i", filepath.Base(videoPath),
 		"-i", "file:"+subPath,
 		"-c", "copy", "-c:s", "mov_text",
 		filepath.Base(outputPath), "-y")
@@ -386,10 +386,10 @@ func HandleConvertFormat(s *service.BotService, message *tgbotapi.Message, args 
 	switch targetFormat {
 	case "mp3", "aac", "flac", "wav":
 
-		cmd = exec.CommandContext(ctx, "ffmpeg", "-i", filepath.Base(inputPath), "-vn", filepath.Base(outputPath), "-y")
+		cmd = execCommand(ctx, "ffmpeg", "-i", filepath.Base(inputPath), "-vn", filepath.Base(outputPath), "-y")
 	default:
 
-		cmd = exec.CommandContext(ctx, "ffmpeg", "-i", filepath.Base(inputPath), "-c:v", "copy", "-c:a", "copy", filepath.Base(outputPath), "-y")
+		cmd = execCommand(ctx, "ffmpeg", "-i", filepath.Base(inputPath), "-c:v", "copy", "-c:a", "copy", filepath.Base(outputPath), "-y")
 	}
 	cmd.Dir = inputDir
 
@@ -437,7 +437,7 @@ func HandleMediaInfo(s *service.BotService, message *tgbotapi.Message, args stri
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", inputPath)
+	cmd := execCommand(ctx, "ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", inputPath)
 	output, err := cmd.Output()
 	if err != nil {
 		s.Reply(message, fmt.Sprintf("❌ *Gagal mendapatkan info*\n\nError: %s", utils.EscapeMarkdownV2(err.Error())))
@@ -612,7 +612,7 @@ func HandleHardsub(s *service.BotService, message *tgbotapi.Message, args string
 	ffmpegSubPath := strings.ReplaceAll(absSubPath, "\\", "/")
 	ffmpegSubPath = strings.ReplaceAll(ffmpegSubPath, ":", "\\:")
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", videoPath,
+	cmd := execCommand(ctx, "ffmpeg", "-i", videoPath,
 		"-vf", fmt.Sprintf("subtitles='%s'", ffmpegSubPath),
 		"-c:v", "libx264", "-crf", "23", "-preset", "medium",
 		"-c:a", "copy",
@@ -707,7 +707,7 @@ func HandleRescale(s *service.BotService, message *tgbotapi.Message, args string
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-i", inputPath,
+	cmd := execCommand(ctx, "ffmpeg", "-i", inputPath,
 		"-vf", fmt.Sprintf("scale=%s:force_original_aspect_ratio=decrease,pad=%s:(ow-iw)/2:(oh-ih)/2", scale, scale),
 		"-c:v", "libx264", "-crf", "23", "-preset", "medium",
 		"-c:a", "copy",

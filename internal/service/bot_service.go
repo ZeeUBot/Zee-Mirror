@@ -269,8 +269,12 @@ func (s *BotService) GetFileWithFallback(fileID string) (tgbotapi.File, bool, er
 		done <- result{file: tgFile, err: err}
 	}()
 
+	// The local Bot API downloads the whole file from Telegram's CDN before
+	// answering getFile (--local mode). Large files (hundreds of MB to 2GB)
+	// can take several minutes on the first fetch, so use a generous timeout
+	// instead of the official API's 20MB window.
 	select {
-	case <-time.After(60 * time.Second):
+	case <-time.After(600 * time.Second):
 		slog.Warn("GetFile timed out from local TG API", "fileID", fileID)
 	case res := <-done:
 		if res.err == nil {

@@ -15,8 +15,8 @@ import (
 )
 
 type Config struct {
-	TelegramAPI              string
-	IndexURL                 string
+	RclonePacerBurst         string
+	RcloneTransfers          string
 	RcloneLogLevel           string
 	RcloneDest               string
 	DownloadDir              string
@@ -28,31 +28,32 @@ type Config struct {
 	SentryDSN                string
 	BotToken                 string
 	DatabaseURL              string
-	DashboardURL             string
+	RcloneBufferSize         string
 	AppHash                  string
-	RcloneTransfers          string
+	RclonePacerMinSleep      string
 	Aria2RPCURL              string
 	Aria2RPCSecret           string
 	WebhookURL               string
 	VikingUserHash           string
 	UserSessionString        string
 	WebhookSecret            string
-	RclonePacerBurst         string
-	RclonePacerMinSleep      string
-	RcloneBufferSize         string
-	RcloneDestFallbacks      []string
+	IndexURL                 string
+	TelegramAPI              string
+	DashboardURL             string
+	encryptionKeyHex         string
 	RcloneDriveChunkSize     string
 	RcloneCheckers           string
 	DBDriver                 string
-	encryptionKeyHex         string
+	EncryptionKey            []byte
+	RcloneDestFallbacks      []string
 	BotTokens                []string
 	AuthorizedUsers          []int64
-	EncryptionKey            []byte
+	MaxRetries               int
 	AutoCleanupDays          int
 	DefaultMaxDailyTasks     int
-	MaxConcurrentDownloads   int
-	MaxRetries               int
+	TGGetFileTimeout         int
 	AppID                    int
+	MaxConcurrentDownloads   int
 	OwnerID                  int64
 	DefaultMaxDailyBandwidth int64
 	DashboardPort            int
@@ -102,6 +103,7 @@ func LoadConfig() *Config {
 		AutoCleanupDays:          getEnvInt("AUTO_CLEANUP_DAYS", 30),
 		DBDriver:                 getEnv("DB_DRIVER", "sqlite"),
 		DatabaseURL:              os.Getenv("DATABASE_URL"),
+		TGGetFileTimeout:         getEnvInt("TG_GETFILE_TIMEOUT", 600),
 		encryptionKeyHex:         os.Getenv("ENCRYPTION_KEY"),
 	}
 

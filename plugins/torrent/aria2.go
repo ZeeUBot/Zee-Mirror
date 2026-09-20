@@ -137,7 +137,7 @@ func (e *Aria2Engine) buildAria2Options(task *domain.Task, outputDir string) map
 	connections := "4"
 	split := "4"
 
-	noRange := noRangeRequestURL(task.URL)
+	noRange := downloader.IsNonRangeURL(task.URL)
 	if noRange {
 		slog.Info("URL detected as non-range-request compatible, using single connection", "url", task.URL)
 		connections = "1"
@@ -159,11 +159,15 @@ func (e *Aria2Engine) buildAria2Options(task *domain.Task, outputDir string) map
 		}
 	}
 
+	// For non-range URLs, send a plain GET: resume probing would otherwise
+	// fail with errorCode=8 when the server replies with the full body.
+	resume := strconv.FormatBool(!noRange)
+
 	options := map[string]interface{}{
 		"dir":                              outputDir,
 		"allow-overwrite":                  "true",
-		"continue":                         strconv.FormatBool(!noRange),
-		"always-resume":                    strconv.FormatBool(!noRange),
+		"continue":                         resume,
+		"always-resume":                    resume,
 		"max-connection-per-server":        connections,
 		"split":                            split,
 		"min-split-size":                   "1M",
@@ -184,7 +188,7 @@ func (e *Aria2Engine) buildAria2Options(task *domain.Task, outputDir string) map
 		"enable-http-pipelining":           "true",
 		"content-disposition-default-utf8": "true",
 		"remote-time":                      "true",
-		"check-integrity":                  strconv.FormatBool(!noRange),
+		"check-integrity":                  resume,
 	}
 
 	cookiesPath := filepath.Join(e.ConfigDir, "cookies.txt")
@@ -205,19 +209,4 @@ func (e *Aria2Engine) buildAria2Options(task *domain.Task, outputDir string) map
 	}
 
 	return options
-}
-
-func noRangeRequestURL(url string) bool {
-	nonRangePatterns := []string{
-		"video-downloads.googleusercontent.com",
-		"drive.google.com/uc?",
-		"drive.google.com/uc&id=",
-	}
-
-	for _, pattern := range nonRangePatterns {
-		if strings.Contains(url, pattern) {
-			return true
-		}
-	}
-	return false
 }

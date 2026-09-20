@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"zee-mirror/internal/domain"
+	"zee-mirror/internal/downloader"
 	"zee-mirror/pkg/utils"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -404,17 +405,24 @@ func (s *BotService) downloadBatchItem(batch *BatchTask, task *Task) error {
 		return fmt.Errorf("%w: failed to create task directory: %v", domain.ErrStorage, err)
 	}
 
+	noRange := downloader.IsNonRangeURL(task.URL)
+	conns, split, resume := "16", "16", "true"
+	if noRange {
+		slog.Info("Batch item is non-range-request compatible, using single connection", "url", task.URL)
+		conns, split, resume = "1", "1", "false"
+	}
+
 	configPath := filepath.Join(s.Config.ConfigDir, "cookies.txt")
 	args := []string{
 		task.URL,
 		"-d", taskDir,
-		"--max-connection-per-server=16",
-		"--split=16",
+		"--max-connection-per-server=" + conns,
+		"--split=" + split,
 		"--min-split-size=1M",
 		"--max-concurrent-downloads=1",
 		"--file-allocation=none",
-		"--continue=true",
-		"--always-resume=false",
+		"--continue=" + resume,
+		"--always-resume=" + resume,
 		"--auto-file-renaming=false",
 		"--summary-interval=1",
 		"--download-result=full",

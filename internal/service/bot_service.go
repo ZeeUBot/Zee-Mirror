@@ -272,9 +272,10 @@ func (s *BotService) GetFileWithFallback(fileID string) (tgbotapi.File, bool, er
 	// The local Bot API downloads the whole file from Telegram's CDN before
 	// answering getFile (--local mode). Large files (hundreds of MB to 2GB)
 	// can take several minutes on the first fetch, so use a generous timeout
-	// instead of the official API's 20MB window.
+	// (configurable via TG_GETFILE_TIMEOUT) instead of the official API's 20MB window.
+	timeout := time.Duration(s.Config.TGGetFileTimeout) * time.Second
 	select {
-	case <-time.After(600 * time.Second):
+	case <-time.After(timeout):
 		slog.Warn("GetFile timed out from local TG API", "fileID", fileID)
 	case res := <-done:
 		if res.err == nil {
@@ -303,6 +304,18 @@ func (s *BotService) GetFileWithFallback(fileID string) (tgbotapi.File, bool, er
 		return tgbotapi.File{}, false, fmt.Errorf("timeout resolving Telegram file: %s", fileID)
 	case offRes := <-offDone:
 		if offRes.err != nil {
+			// The official API cannot serve files above 20MB ("file is too
+			// big"). If the local API finished fetching meanwhile, prefer its
+			// result over a misleading error.
+			select {
+			case localRes := <-done:
+				if localRes.err == nil {
+					slog.Info("Local TG API resolved file after official API rejected it", "fileID", fileID)
+					return localRes.file, false, nil
+				}
+				slog.Warn("Local TG API also failed to resolve file", "fileID", fileID, "error", localRes.err)
+			default:
+			}
 			return tgbotapi.File{}, false, offRes.err
 		}
 		slog.Info("Successfully retrieved file info from official API", "fileID", fileID, "path", offRes.file.FilePath)

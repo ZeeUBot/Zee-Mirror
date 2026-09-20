@@ -44,6 +44,7 @@ type Config struct {
 	RcloneDriveChunkSize     string
 	RcloneCheckers           string
 	DBDriver                 string
+	TGGetFileTimeout         int
 	encryptionKeyHex         string
 	BotTokens                []string
 	AuthorizedUsers          []int64
@@ -102,6 +103,7 @@ func LoadConfig() *Config {
 		AutoCleanupDays:          getEnvInt("AUTO_CLEANUP_DAYS", 30),
 		DBDriver:                 getEnv("DB_DRIVER", "sqlite"),
 		DatabaseURL:              os.Getenv("DATABASE_URL"),
+		TGGetFileTimeout:         getEnvInt("TG_GETFILE_TIMEOUT", 600),
 		encryptionKeyHex:         os.Getenv("ENCRYPTION_KEY"),
 	}
 

@@ -26,3 +26,9 @@ updates:
       npm-dependencies:
         patterns:
           - "*"
+        # Only auto-apply minor/patch bumps. Major upgrades (e.g. eslint 10,
+        # tailwindcss 4, typescript 7) require deliberate migration and must
+        # not ride along in a grouped automated PR.
+        update-types:
+          - "minor"
+          - "patch"

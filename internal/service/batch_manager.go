@@ -414,6 +414,7 @@ func (s *BotService) downloadBatchItem(batch *BatchTask, task *Task) error {
 		"--max-concurrent-downloads=1",
 		"--file-allocation=none",
 		"--continue=true",
+		"--always-resume=false",
 		"--auto-file-renaming=false",
 		"--summary-interval=1",
 		"--download-result=full",

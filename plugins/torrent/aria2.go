@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"zee-mirror/internal/config"
@@ -136,7 +137,8 @@ func (e *Aria2Engine) buildAria2Options(task *domain.Task, outputDir string) map
 	connections := "4"
 	split := "4"
 
-	if noRangeRequestURL(task.URL) {
+	noRange := noRangeRequestURL(task.URL)
+	if noRange {
 		slog.Info("URL detected as non-range-request compatible, using single connection", "url", task.URL)
 		connections = "1"
 		split = "1"
@@ -160,8 +162,8 @@ func (e *Aria2Engine) buildAria2Options(task *domain.Task, outputDir string) map
 	options := map[string]interface{}{
 		"dir":                              outputDir,
 		"allow-overwrite":                  "true",
-		"continue":                         "true",
-		"always-resume":                    "true",
+		"continue":                         strconv.FormatBool(!noRange),
+		"always-resume":                    strconv.FormatBool(!noRange),
 		"max-connection-per-server":        connections,
 		"split":                            split,
 		"min-split-size":                   "1M",
@@ -182,7 +184,7 @@ func (e *Aria2Engine) buildAria2Options(task *domain.Task, outputDir string) map
 		"enable-http-pipelining":           "true",
 		"content-disposition-default-utf8": "true",
 		"remote-time":                      "true",
-		"check-integrity":                  "true",
+		"check-integrity":                  strconv.FormatBool(!noRange),
 	}
 
 	cookiesPath := filepath.Join(e.ConfigDir, "cookies.txt")

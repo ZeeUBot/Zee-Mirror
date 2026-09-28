@@ -23,14 +23,19 @@ updates:
     schedule:
       interval: "weekly"
     ignore:
-      # Major bumps need a deliberate migration and land as individual PRs
-      # (groups only filter what enters the group, they do not suppress the
-      # rest). eslint 10 is blocked upstream: eslint-plugin-react declares
-      # peer eslint "^3..^9.7", so `npm ci` cannot resolve it. Drop this rule
-      # once the plugin set supports eslint 10.
+      # eslint 10 is blocked upstream: eslint-plugin-react@7.37.5 declares
+      # peer eslint "^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9.7", so `npm ci`
+      # cannot resolve it. Groups cannot express this — excluding a level from
+      # a group only keeps it out of the bundled PR, Dependabot still opens an
+      # individual one. Drop this rule once the plugin set supports eslint 10.
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
     groups:
       npm-dependencies:
         patterns:
           - "*"
+        # Keep majors out of the bundled PR. They still arrive as individual
+        # PRs and need a deliberate migration.
+        update-types:
+          - "minor"
+          - "patch"

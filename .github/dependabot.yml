@@ -22,13 +22,15 @@ updates:
     directory: "/dashboard"
     schedule:
       interval: "weekly"
+    ignore:
+      # Major bumps need a deliberate migration and land as individual PRs
+      # (groups only filter what enters the group, they do not suppress the
+      # rest). eslint 10 is blocked upstream: eslint-plugin-react declares
+      # peer eslint "^3..^9.7", so `npm ci` cannot resolve it. Drop this rule
+      # once the plugin set supports eslint 10.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
     groups:
       npm-dependencies:
         patterns:
           - "*"
-        # Only auto-apply minor/patch bumps. Major upgrades (e.g. eslint 10,
-        # tailwindcss 4, typescript 7) require deliberate migration and must
-        # not ride along in a grouped automated PR.
-        update-types:
-          - "minor"
-          - "patch"

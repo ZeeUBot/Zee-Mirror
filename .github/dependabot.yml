@@ -22,13 +22,20 @@ updates:
     directory: "/dashboard"
     schedule:
       interval: "weekly"
+    ignore:
+      # eslint 10 is blocked upstream: eslint-plugin-react@7.37.5 declares
+      # peer eslint "^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9.7", so `npm ci`
+      # cannot resolve it. Groups cannot express this — excluding a level from
+      # a group only keeps it out of the bundled PR, Dependabot still opens an
+      # individual one. Drop this rule once the plugin set supports eslint 10.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
     groups:
       npm-dependencies:
         patterns:
           - "*"
-        # Only auto-apply minor/patch bumps. Major upgrades (e.g. eslint 10,
-        # tailwindcss 4, typescript 7) require deliberate migration and must
-        # not ride along in a grouped automated PR.
+        # Keep majors out of the bundled PR. They still arrive as individual
+        # PRs and need a deliberate migration.
         update-types:
           - "minor"
           - "patch"
